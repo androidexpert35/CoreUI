@@ -1,4 +1,4 @@
-package com.tony.coreui.components.basescreen
+package com.tony.coreui.presentation.components.basescreen
 
 import android.app.Activity
 import androidx.compose.runtime.Composable
@@ -10,7 +10,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Synchronises system bar colours with the current screen styling.
+ * Synchronizes system bar colors and icon appearance with the active screen styling.
  */
 @Composable
 @Suppress("DEPRECATION")

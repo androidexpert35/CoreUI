@@ -1,4 +1,4 @@
-package com.tony.coreui.components.basescreen
+package com.tony.coreui.presentation.components.basescreen
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -14,15 +14,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
 import com.tony.coreui.R
-import com.tony.coreui.state.UIError
-import com.tony.coreui.state.UIState
-import com.tony.coreui.state.UIStatus
+import com.tony.coreui.presentation.state.UIError
+import com.tony.coreui.presentation.state.UIState
+import com.tony.coreui.presentation.state.UIStatus
 
 private const val EnterAnimationDurationMillis = 220
 private const val ExitAnimationDurationMillis = 150
 
 /**
- * Shared screen shell that handles loading and error overlays for Compose screens.
+ * Reusable screen scaffold that orchestrates content, loading and error rendering.
+ *
+ * This composable is intended to be the default shell for feature screens that expose a [UIState]
+ * from [com.tony.coreui.presentation.viewmodel.BaseViewModel].
+ *
+ * When the built-in error dialog is used, [onErrorDialogDismiss] is invoked whenever the dialog
+ * is dismissed through one of its actions. This allows screens to keep the backing
+ * [UIState.showErrorDialog] flag in sync without repeating the same close logic for every button.
  */
 @Composable
 fun <T> AppBaseScreen(
@@ -36,6 +43,7 @@ fun <T> AppBaseScreen(
     loadingType: BaseLoadingType = BaseLoadingType.DEFAULT,
     loadingScreen: (@Composable () -> Unit)? = null,
     errorScreen: (@Composable (UIError) -> Unit)? = null,
+    onErrorDialogDismiss: () -> Unit = {},
     content: @Composable (T) -> Unit
 ) {
     SystemAppearance(
@@ -91,6 +99,12 @@ fun <T> AppBaseScreen(
                     errorScreen(error)
                 }
             } else if (isError && uiState.showErrorDialog && error != null) {
+                val dismissErrorDialog = {
+                    onErrorDialogDismiss()
+                    errorDialogConfig.onDismissRequest?.invoke()
+                    Unit
+                }
+
                 BaseDialog(
                     title = error.title,
                     message = error.message,
@@ -102,7 +116,7 @@ fun <T> AppBaseScreen(
                     onConfirm = errorDialogConfig.onConfirm,
                     onRetry = error.retryAction,
                     onCancel = errorDialogConfig.onCancel,
-                    onDismissRequest = { errorDialogConfig.onDismissRequest?.invoke() },
+                    onDismissRequest = dismissErrorDialog,
                     properties = DialogProperties(
                         dismissOnBackPress = false,
                         dismissOnClickOutside = false

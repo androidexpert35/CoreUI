@@ -2,14 +2,26 @@
 
 `coreui` is a reusable Android AAR module that extracts the generic presentation primitives from Audiphile Music Player and repackages them under `com.tony.coreui`.
 
-## What is included
+## Architecture
 
-- `com.tony.coreui.viewmodel.BaseViewModel`
-- `com.tony.coreui.state.UIState`, `UIStatus`, `UIError`
-- `com.tony.coreui.resource.Resource`, `ResourceError`
-- `com.tony.coreui.components.basescreen.*`
-- `com.tony.coreui.navigation.*`
-- `com.tony.coreui.strings.CoreUiStringProvider`
+The module follows a pragmatic clean architecture split:
+
+- `com.tony.coreui.domain`
+  Framework-agnostic contracts and result models shared across the module.
+- `com.tony.coreui.data`
+  Concrete infrastructure implementations used by the library.
+- `com.tony.coreui.presentation`
+  Compose components, UI state models and base view-model abstractions.
+
+## Public API highlights
+
+- `com.tony.coreui.presentation.viewmodel.BaseViewModel`
+- `com.tony.coreui.presentation.state.UIState`, `UIStatus`, `UIError`
+- `com.tony.coreui.domain.resource.Resource`, `ResourceError`
+- `com.tony.coreui.presentation.components.basescreen.*`
+- `com.tony.coreui.presentation.navigation.*`
+- `com.tony.coreui.presentation.navigation.NavigationManagerImpl`
+- `com.tony.coreui.data.strings.CoreUiStringProvider`
 
 ## Host setup
 
@@ -19,6 +31,8 @@
 4. Translate emitted `NavigationCommand` values inside your UI host.
 
 ```kotlin
+import com.tony.coreui.data.strings.CoreUiStringProvider
+
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -28,6 +42,9 @@ class App : Application() {
 ```
 
 ```kotlin
+import com.tony.coreui.presentation.navigation.NavigationCommand
+import com.tony.coreui.presentation.navigation.NavigationManagerImpl
+
 val navigationManager = NavigationManagerImpl()
 
 LaunchedEffect(navController, navigationManager) {
@@ -74,6 +91,10 @@ LaunchedEffect(navController, navigationManager) {
 ```
 
 ```kotlin
+import com.tony.coreui.presentation.components.basescreen.AppBaseScreen
+import com.tony.coreui.presentation.components.basescreen.BaseLoadingType
+import com.tony.coreui.presentation.components.basescreen.ErrorDialogConfig
+
 @Composable
 fun ExampleScreen(viewModel: ExampleViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,10 +102,8 @@ fun ExampleScreen(viewModel: ExampleViewModel) {
     AppBaseScreen(
         uiState = uiState,
         loadingType = BaseLoadingType.DEFAULT,
-        errorDialogConfig = ErrorDialogConfig(
-            onConfirm = { viewModel.showErrorPopup(false) },
-            onDismissRequest = { viewModel.showErrorPopup(false) }
-        )
+        onErrorDialogDismiss = viewModel::dismissErrorPopup,
+        errorDialogConfig = ErrorDialogConfig()
     ) { data ->
         ExampleContent(data = data)
     }
@@ -94,5 +113,6 @@ fun ExampleScreen(viewModel: ExampleViewModel) {
 ## Notes
 
 - The module intentionally has no mandatory Hilt dependency.
-- `ResourceError` is generic, but hosts with richer domain errors should map them before they hit `BaseViewModel`.
+- `ResourceError` is intentionally generic; hosts with richer domain errors should map them before they hit `BaseViewModel`.
 - Navigation stays command-based so hosts can bind it to Navigation Compose or another navigator.
+- `CoreUiStringProvider` should be initialized from the application process before non-composable string resolution occurs.

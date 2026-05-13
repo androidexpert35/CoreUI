@@ -1,4 +1,4 @@
-package com.tony.coreui.components.basescreen
+package com.tony.coreui.presentation.components.basescreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.tony.coreui.R
 
 /**
- * Generic Material 3 loading screen for fullscreen or overlay usage.
+ * Material 3 loading surface for fullscreen or overlay presentation.
  */
 @Composable
 fun LoadingScreen(

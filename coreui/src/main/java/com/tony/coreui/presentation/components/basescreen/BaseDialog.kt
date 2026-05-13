@@ -1,4 +1,4 @@
-package com.tony.coreui.components.basescreen
+package com.tony.coreui.presentation.components.basescreen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +25,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
 /**
- * Generic Material 3 dialog for error and confirmation flows.
+ * Generic Material 3 dialog used by the library for confirmation and error flows.
  */
 @Composable
 fun BaseDialog(

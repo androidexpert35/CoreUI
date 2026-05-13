@@ -1,4 +1,4 @@
-package com.tony.coreui.components.basescreen
+package com.tony.coreui.presentation.components.basescreen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.tony.coreui.R
 
 /**
- * Generic screen for fatal errors or empty fallback flows.
+ * Full-screen error surface for fatal states or unrecoverable fallback flows.
  */
 @Composable
 fun ErrorScreen(

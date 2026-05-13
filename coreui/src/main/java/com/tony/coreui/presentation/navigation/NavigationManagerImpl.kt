@@ -1,4 +1,4 @@
-package com.tony.coreui.navigation
+package com.tony.coreui.presentation.navigation
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Default in-memory implementation of [NavigationManager].
+ *
+ * This implementation is intentionally lightweight and suitable for library consumers that
+ * want a ready-to-use command bus without introducing an additional navigation abstraction.
  */
 class NavigationManagerImpl : NavigationManager {
 
