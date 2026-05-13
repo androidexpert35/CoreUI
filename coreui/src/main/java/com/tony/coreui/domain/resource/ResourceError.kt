@@ -6,7 +6,7 @@ package com.tony.coreui.domain.resource
  * Host applications with richer domain errors should map them to one of these categories before
  * surfacing the result through shared presentation components.
  */
-sealed interface ResourceError {
+interface ResourceError {
 
     /**
      * Business-logic failure that does not fit a more specific category.

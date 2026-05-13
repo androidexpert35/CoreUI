@@ -68,4 +68,30 @@ class NavigationManagerImplTest {
 
         assertNull(manager.currentRoute.value)
     }
+
+    @Test
+    fun navigate_sameRouteCanStillEmitWhenExplicitlyAllowed() = runTest {
+        val manager = NavigationManagerImpl()
+        manager.onRouteChanged("home")
+        val commands = async(UnconfinedTestDispatcher(testScheduler)) {
+            manager.navigationCommands.take(1).toList()
+        }
+
+        manager.navigate(
+            route = "home",
+            options = NavigationOptions(allowRepeatOnSameRoute = true)
+        )
+        advanceUntilIdle()
+
+        assertEquals("home", manager.currentRoute.value)
+        assertEquals(
+            listOf(
+                NavigationCommand.Navigate(
+                    route = "home",
+                    options = NavigationOptions(allowRepeatOnSameRoute = true)
+                )
+            ),
+            commands.await()
+        )
+    }
 }

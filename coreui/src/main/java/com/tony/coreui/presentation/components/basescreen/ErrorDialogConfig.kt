@@ -8,6 +8,8 @@ package com.tony.coreui.presentation.components.basescreen
  * supplied to [AppBaseScreen] through `onErrorDialogDismiss`.
  *
  * @param onConfirm callback invoked when the confirm action is selected.
+ * @param onRetry optional callback invoked when the retry action is selected. When `null`, the
+ * retry action attached to [com.tony.coreui.presentation.state.UIError] is used.
  * @param onCancel optional callback invoked when the dismiss action is selected.
  * @param onDismissRequest optional callback invoked after the dialog has been dismissed.
  * @param confirmButtonText optional label for the confirm action. When `null`, a default localized
@@ -18,6 +20,7 @@ package com.tony.coreui.presentation.components.basescreen
  */
 data class ErrorDialogConfig(
     val onConfirm: () -> Unit = {},
+    val onRetry: (() -> Unit)? = null,
     val onCancel: (() -> Unit)? = null,
     val onDismissRequest: (() -> Unit)? = null,
     val confirmButtonText: String? = null,

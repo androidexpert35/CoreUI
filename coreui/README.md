@@ -17,16 +17,18 @@ The module follows a pragmatic clean architecture split:
 
 - `com.tony.coreui.presentation.viewmodel.BaseViewModel`
 - `com.tony.coreui.presentation.state.UIState`, `UIStatus`, `UIError`
+- `com.tony.coreui.presentation.state.UIErrorDisplayMode`
 - `com.tony.coreui.domain.resource.Resource`, `ResourceError`
 - `com.tony.coreui.presentation.components.basescreen.*`
 - `com.tony.coreui.presentation.navigation.*`
 - `com.tony.coreui.presentation.navigation.NavigationManagerImpl`
-- `com.tony.coreui.data.strings.CoreUiStringProvider`
+- `com.tony.coreui.data.strings.CoreUiStringProvider`, `StringResolver`, `AndroidStringResolver`
+- `com.tony.coreui.presentation.error.UiErrorMapper`, `DefaultUiErrorMapper`
 
 ## Host setup
 
 1. Depend on the module or published AAR.
-2. Initialize the string provider once in your `Application`.
+2. Initialize the string provider once in your `Application`, or inject your own `StringResolver`.
 3. Provide a `NavigationManager` implementation, or use `NavigationManagerImpl`.
 4. Translate emitted `NavigationCommand` values inside your UI host.
 
@@ -38,6 +40,23 @@ class App : Application() {
         super.onCreate()
         CoreUiStringProvider.init(this)
     }
+}
+```
+
+If you prefer avoiding global initialization, inject a resolver directly into your view models:
+
+```kotlin
+import com.tony.coreui.data.strings.AndroidStringResolver
+import com.tony.coreui.presentation.error.DefaultUiErrorMapper
+import com.tony.coreui.presentation.viewmodel.BaseViewModel
+
+class ExampleViewModel(
+    context: Context
+) : BaseViewModel<ExampleUiState, ExampleEvent, ExampleEffect>(
+    stringResolver = AndroidStringResolver(context),
+    uiErrorMapper = DefaultUiErrorMapper(AndroidStringResolver(context))
+) {
+    override fun handleEvent(event: ExampleEvent) = Unit
 }
 ```
 
@@ -110,9 +129,20 @@ fun ExampleScreen(viewModel: ExampleViewModel) {
 }
 ```
 
+## Extensibility defaults
+
+The library keeps its ready-to-use defaults, but the main decision points are now open:
+
+- `BaseViewModel` accepts injectable `StringResolver` and `UiErrorMapper` strategies.
+- `UIError.displayMode` can switch between dialog, full-screen, or host-managed error rendering.
+- `AppBaseScreen` supports `BaseScreenRenderPolicy`, `emptyContent`, `errorDialog`, and
+  `contentWithState` without losing the built-in defaults.
+- `NavigationOptions` supports `allowRepeatOnSameRoute` and host-defined `extras`.
+- `ResourceError` is open for host-defined error types when the default categories are not enough.
+
 ## Notes
 
 - The module intentionally has no mandatory Hilt dependency.
-- `ResourceError` is intentionally generic; hosts with richer domain errors should map them before they hit `BaseViewModel`.
+- `ResourceError` is intentionally generic; hosts can keep using the defaults or inject a custom `UiErrorMapper` for richer domain-specific behavior.
 - Navigation stays command-based so hosts can bind it to Navigation Compose or another navigator.
-- `CoreUiStringProvider` should be initialized from the application process before non-composable string resolution occurs.
+- `CoreUiStringProvider` should be initialized from the application process before non-composable string resolution occurs when you rely on the global default resolver.

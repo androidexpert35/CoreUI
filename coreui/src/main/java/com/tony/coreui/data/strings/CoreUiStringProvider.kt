@@ -11,7 +11,7 @@ import com.tony.coreui.data.strings.CoreUiStringProvider.init
  * Library consumers should initialize this provider once from `Application.onCreate()` before
  * invoking APIs that need string resolution outside a composable scope.
  */
-object CoreUiStringProvider {
+object CoreUiStringProvider : StringResolver {
 
     @Volatile
     private var appContext: Context? = null
@@ -40,7 +40,7 @@ object CoreUiStringProvider {
      * @return localized string value resolved from [id].
      * @throws IllegalStateException when the provider has not been initialized yet.
      */
-    fun get(@StringRes id: Int, vararg formatArgs: Any): String {
+    override fun get(@StringRes id: Int, vararg formatArgs: Any): String {
         val context = appContext ?: error(
             "CoreUiStringProvider is not initialized. Call CoreUiStringProvider.init(context) from Application."
         )
@@ -60,7 +60,7 @@ object CoreUiStringProvider {
      * @return localized plural string value resolved from [id].
      * @throws IllegalStateException when the provider has not been initialized yet.
      */
-    fun getPlural(@PluralsRes id: Int, quantity: Int, vararg formatArgs: Any): String {
+    override fun getPlural(@PluralsRes id: Int, quantity: Int, vararg formatArgs: Any): String {
         val context = appContext ?: error(
             "CoreUiStringProvider is not initialized. Call CoreUiStringProvider.init(context) from Application."
         )

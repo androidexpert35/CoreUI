@@ -20,7 +20,7 @@ class NavigationManagerImpl : NavigationManager {
     override val currentRoute = _currentRoute.asStateFlow()
 
     override fun navigate(route: String, options: NavigationOptions) {
-        if (route == _currentRoute.value) {
+        if (route == _currentRoute.value && !options.allowRepeatOnSameRoute) {
             return
         }
         _currentRoute.value = route

@@ -13,10 +13,15 @@ package com.tony.coreui.presentation.navigation
  * navigation.
  * @param popUpToInclusive whether [popUpToRoute], when provided, should also be removed from the
  * back stack.
+ * @param allowRepeatOnSameRoute when `true`, emits a navigation command even if [route] already
+ * matches the current route tracked by the default manager.
+ * @param extras optional host-defined metadata that can travel with the navigation request.
  */
 data class NavigationOptions(
     val launchSingleTop: Boolean = false,
     val restoreState: Boolean = false,
     val popUpToRoute: String? = null,
-    val popUpToInclusive: Boolean = false
+    val popUpToInclusive: Boolean = false,
+    val allowRepeatOnSameRoute: Boolean = false,
+    val extras: Map<String, Any?> = emptyMap()
 )

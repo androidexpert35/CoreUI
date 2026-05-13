@@ -4,13 +4,16 @@ import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tony.coreui.R
 import com.tony.coreui.data.strings.CoreUiStringProvider
+import com.tony.coreui.data.strings.StringResolver
 import com.tony.coreui.domain.resource.Resource
 import com.tony.coreui.domain.resource.ResourceError
+import com.tony.coreui.presentation.error.DefaultUiErrorMapper
+import com.tony.coreui.presentation.error.UiErrorMapper
 import com.tony.coreui.presentation.navigation.NavigationManager
 import com.tony.coreui.presentation.navigation.NavigationOptions
 import com.tony.coreui.presentation.state.UIError
+import com.tony.coreui.presentation.state.UIErrorDisplayMode
 import com.tony.coreui.presentation.state.UIState
 import com.tony.coreui.presentation.state.UIStatus
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -41,7 +44,9 @@ import kotlinx.coroutines.launch
  * @param navigationManager optional navigation delegate used by the built-in navigation helpers.
  */
 abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
-    private val navigationManager: NavigationManager? = null
+    private val navigationManager: NavigationManager? = null,
+    private val stringResolver: StringResolver = CoreUiStringProvider,
+    private val uiErrorMapper: UiErrorMapper = DefaultUiErrorMapper(stringResolver)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UIState<UI_TYPE>())
@@ -72,7 +77,7 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
      */
     protected open fun resolveString(@StringRes id: Int, vararg args: Any): String {
         return try {
-            CoreUiStringProvider.get(id, *args)
+            stringResolver.get(id, *args)
         } catch (_: Throwable) {
             id.toString()
         }
@@ -95,33 +100,24 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
     ) {
         val errorUiState = when (errorObject) {
             is Resource.Error -> processErrorResource(errorObject.data, retryAction)
-            is Throwable -> UIError(
-                title = resolveString(R.string.coreui_error_unexpected_title),
-                message = errorObject.message
-                    ?: resolveString(R.string.coreui_error_unknown_fallback_message),
-                type = errorObject,
-                retryAction = retryAction
-            )
-            else -> UIError(
-                title = resolveString(R.string.coreui_error_unknown_title),
-                message = resolveString(R.string.coreui_error_unknown_message),
-                type = errorObject,
-                retryAction = retryAction
-            )
+            else -> mapErrorObject(errorObject, retryAction)
         }
 
         val processedError = processUIError?.invoke(errorUiState) ?: errorUiState
 
-        _uiState.update { currentState ->
-            val newData = processUiAfterError?.invoke(processedError)
-            currentState.copy(
-                status = UIStatus.ERROR,
-                error = processedError,
-                data = newData ?: currentState.data,
-                showErrorDialog = processUiAfterError == null
-            )
-        }
+        setErrorState(processedError, processUiAfterError)
     }
+
+    /**
+     * Maps an arbitrary error payload to a [UIError].
+     *
+     * Subclasses can override this method to specialize only a subset of failure types while
+     * still delegating the rest to the injected [uiErrorMapper].
+     */
+    protected open fun mapErrorObject(
+        errorObject: Any,
+        retryAction: (() -> Unit)? = null
+    ): UIError = uiErrorMapper.map(errorObject, retryAction)
 
     /**
      * Converts a [ResourceError] into a localized [UIError].
@@ -133,52 +129,26 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
     protected open fun processErrorResource(
         resource: ResourceError?,
         retryAction: (() -> Unit)? = null
-    ): UIError {
-        return when (resource) {
-            is ResourceError.LogicError -> UIError(
-                title = resolveString(R.string.coreui_error_generic_title),
-                message = resource.errorMessage
-                    ?: resolveString(R.string.coreui_error_generic_fallback_message),
-                type = resource,
-                retryAction = retryAction
-            )
-            is ResourceError.ValidationError -> UIError(
-                title = resolveString(R.string.coreui_error_validation_title),
-                message = resource.message,
-                type = resource,
-                retryAction = retryAction
-            )
-            is ResourceError.StorageError -> UIError(
-                title = resolveString(R.string.coreui_error_storage_title),
-                message = resource.message,
-                type = resource,
-                retryAction = retryAction
-            )
-            is ResourceError.DatabaseError -> UIError(
-                title = resolveString(R.string.coreui_error_database_title),
-                message = resource.message,
-                type = resource,
-                retryAction = retryAction
-            )
-            is ResourceError.ServiceError -> UIError(
-                title = resolveString(R.string.coreui_error_service_title),
-                message = resource.message,
-                type = resource,
-                retryAction = retryAction
-            )
-            is ResourceError.NetworkError -> UIError(
-                title = resolveString(R.string.coreui_error_network_title),
-                message = resource.message.ifBlank {
-                    resolveString(R.string.coreui_error_network_message)
-                },
-                type = resource,
-                retryAction = retryAction
-            )
-            ResourceError.UnknownError, null -> UIError(
-                title = resolveString(R.string.coreui_error_unknown_title),
-                message = resolveString(R.string.coreui_error_unknown_message),
-                type = resource,
-                retryAction = retryAction
+    ): UIError = uiErrorMapper.mapResourceError(resource, retryAction)
+
+    /**
+     * Commits the provided [error] to [uiState] using the library defaults for error visibility.
+     *
+     * Hosts that want to set a presentation-ready error without going through [handleError] can
+     * use this helper directly.
+     */
+    protected fun setErrorState(
+        error: UIError,
+        processUiAfterError: ((UIError) -> UI_TYPE?)? = null
+    ) {
+        _uiState.update { currentState ->
+            val newData = processUiAfterError?.invoke(error)
+            currentState.copy(
+                status = UIStatus.ERROR,
+                error = error,
+                data = newData ?: currentState.data,
+                showErrorDialog =
+                    processUiAfterError == null && error.displayMode == UIErrorDisplayMode.DIALOG
             )
         }
     }

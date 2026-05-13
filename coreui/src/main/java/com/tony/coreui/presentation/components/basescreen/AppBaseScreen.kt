@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
 import com.tony.coreui.R
 import com.tony.coreui.presentation.state.UIError
+import com.tony.coreui.presentation.state.UIErrorDisplayMode
 import com.tony.coreui.presentation.state.UIState
 import com.tony.coreui.presentation.state.UIStatus
 
@@ -47,15 +48,23 @@ private const val ExitAnimationDurationMillis = 150
  * @param useLightNavigationIcons when non-null, explicitly controls whether light navigation bar
  * icons are requested; otherwise the value is inferred from [navigationBarColor].
  * @param containerColor background color of the full-screen [Surface] that hosts this layout.
+ * @param renderPolicy rendering policy that controls how strongly the scaffold owns system
+ * appearance and content visibility.
  * @param errorDialogConfig configuration used by the default error dialog when
  * [UIState.showErrorDialog] is `true`.
  * @param loadingType built-in loading presentation strategy to use when [UIStatus.LOADING] is
  * active.
  * @param loadingScreen optional custom loading content. When provided, it replaces the default
  * [LoadingScreen] for all enabled loading modes.
+ * @param emptyContent optional content shown when no renderable data is available and the state is
+ * neither loading nor showing a built-in error presentation.
+ * @param errorDialog optional custom dialog content used when [UIState.showErrorDialog] is `true`.
  * @param errorScreen optional custom full-screen error content shown when [uiState] is in the
  * error state and [UIError] is available.
+ * @param contentWithState optional render function that receives both the latest non-null
+ * [UIState.data] value and the full [uiState].
  * @param onErrorDialogDismiss callback invoked when the built-in error dialog is dismissed.
+ * @param dialogProperties [DialogProperties] applied to the built-in error dialog.
  * @param content main render function that receives the latest non-null [UIState.data] value.
  */
 @Composable
@@ -66,37 +75,66 @@ fun <T> AppBaseScreen(
     useLightStatusIcons: Boolean? = null,
     useLightNavigationIcons: Boolean? = null,
     containerColor: Color = MaterialTheme.colorScheme.background,
+    renderPolicy: BaseScreenRenderPolicy = BaseScreenRenderPolicy(),
     errorDialogConfig: ErrorDialogConfig = ErrorDialogConfig(),
     loadingType: BaseLoadingType = BaseLoadingType.DEFAULT,
     loadingScreen: (@Composable () -> Unit)? = null,
+    emptyContent: (@Composable () -> Unit)? = null,
+    errorDialog: (@Composable (UIError, () -> Unit) -> Unit)? = null,
     errorScreen: (@Composable (UIError) -> Unit)? = null,
+    contentWithState: (@Composable (T, UIState<T>) -> Unit)? = null,
     onErrorDialogDismiss: () -> Unit = {},
+    dialogProperties: DialogProperties = DialogProperties(
+        dismissOnBackPress = false,
+        dismissOnClickOutside = false
+    ),
     content: @Composable (T) -> Unit
 ) {
-    SystemAppearance(
-        statusBarColor = statusBarColor,
-        navigationBarColor = navigationBarColor,
-        useLightStatusIcons = useLightStatusIcons,
-        useLightNavigationIcons = useLightNavigationIcons
-    )
+    if (renderPolicy.applySystemAppearance) {
+        SystemAppearance(
+            statusBarColor = statusBarColor,
+            navigationBarColor = navigationBarColor,
+            useLightStatusIcons = useLightStatusIcons,
+            useLightNavigationIcons = useLightNavigationIcons
+        )
+    }
 
     val status = uiState.status
     val data = uiState.data
     val error = uiState.error
     val isLoading = status == UIStatus.LOADING
     val isError = status == UIStatus.ERROR
+    val shouldShowBuiltInErrorScreen =
+        isError && error != null && error.displayMode == UIErrorDisplayMode.FULL_SCREEN
+    val shouldShowBuiltInErrorDialog =
+        isError &&
+            error != null &&
+            uiState.showErrorDialog &&
+            error.displayMode == UIErrorDisplayMode.DIALOG
+    val hideContentForDefaultLoading =
+        isLoading &&
+            loadingType == BaseLoadingType.DEFAULT &&
+            renderPolicy.hideContentOnDefaultLoading
+    val hideContentForError =
+        shouldShowBuiltInErrorScreen &&
+            data != null &&
+            !renderPolicy.keepContentVisibleOnError
+    val shouldRenderContent = data != null && !hideContentForDefaultLoading && !hideContentForError
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = containerColor
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (data != null) {
-                val hideContentForDefaultLoading =
-                    isLoading && loadingType == BaseLoadingType.DEFAULT
-                if (!hideContentForDefaultLoading) {
-                    content(data)
-                }
+            if (shouldRenderContent) {
+                contentWithState?.invoke(data, uiState) ?: content(data)
+            } else if (
+                data == null &&
+                emptyContent != null &&
+                !isLoading &&
+                (!isError || error?.displayMode == UIErrorDisplayMode.NONE)
+            ) {
+                emptyContent()
             }
 
             AnimatedVisibility(
@@ -125,30 +163,48 @@ fun <T> AppBaseScreen(
                 ) {
                     errorScreen(error)
                 }
-            } else if (isError && uiState.showErrorDialog && error != null) {
+            } else if (shouldShowBuiltInErrorScreen) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(animationSpec = tween(durationMillis = EnterAnimationDurationMillis)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = ExitAnimationDurationMillis))
+                ) {
+                    ErrorScreen(
+                        title = error.title,
+                        description = error.message,
+                        primaryButtonText = if (error.retryAction != null) {
+                            stringResource(R.string.coreui_action_retry)
+                        } else {
+                            null
+                        },
+                        onPrimaryButtonClick = error.retryAction
+                    )
+                }
+            } else if (shouldShowBuiltInErrorDialog) {
                 val dismissErrorDialog = {
                     onErrorDialogDismiss()
                     errorDialogConfig.onDismissRequest?.invoke()
                     Unit
                 }
 
-                BaseDialog(
-                    title = error.title,
-                    message = error.message,
-                    confirmButtonText = errorDialogConfig.confirmButtonText
-                        ?: stringResource(R.string.coreui_action_ok),
-                    retryButtonText = errorDialogConfig.retryButtonText
-                        ?: stringResource(R.string.coreui_action_retry),
-                    dismissButtonText = errorDialogConfig.dismissButtonText,
-                    onConfirm = errorDialogConfig.onConfirm,
-                    onRetry = error.retryAction,
-                    onCancel = errorDialogConfig.onCancel,
-                    onDismissRequest = dismissErrorDialog,
-                    properties = DialogProperties(
-                        dismissOnBackPress = false,
-                        dismissOnClickOutside = false
+                if (errorDialog != null) {
+                    errorDialog(error, dismissErrorDialog)
+                } else {
+                    BaseDialog(
+                        title = error.title,
+                        message = error.message,
+                        confirmButtonText = errorDialogConfig.confirmButtonText
+                            ?: stringResource(R.string.coreui_action_ok),
+                        retryButtonText = errorDialogConfig.retryButtonText
+                            ?: stringResource(R.string.coreui_action_retry),
+                        dismissButtonText = errorDialogConfig.dismissButtonText,
+                        onConfirm = errorDialogConfig.onConfirm,
+                        onRetry = errorDialogConfig.onRetry ?: error.retryAction,
+                        onCancel = errorDialogConfig.onCancel,
+                        onDismissRequest = dismissErrorDialog,
+                        properties = dialogProperties
                     )
-                )
+                }
             }
         }
     }
