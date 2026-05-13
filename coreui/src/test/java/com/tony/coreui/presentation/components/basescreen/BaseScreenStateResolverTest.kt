@@ -95,7 +95,7 @@ class BaseScreenStateResolverTest {
     @Test
     fun emptySlotCanRenderWhenErrorUiIsSuppressed() {
         val resolvedState = resolveBaseScreenState(
-            uiState = UIState(
+            uiState = UIState<String>(
                 status = UIStatus.ERROR,
                 error = UIError(
                     title = "Silent",

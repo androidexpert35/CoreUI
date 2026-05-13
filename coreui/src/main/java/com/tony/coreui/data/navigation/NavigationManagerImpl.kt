@@ -1,5 +1,8 @@
-package com.tony.coreui.presentation.navigation
+package com.tony.coreui.data.navigation
 
+import com.tony.coreui.presentation.navigation.NavigationCommand
+import com.tony.coreui.presentation.navigation.NavigationManager
+import com.tony.coreui.presentation.navigation.NavigationOptions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -8,8 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Default in-memory implementation of [NavigationManager].
  *
- * This implementation is intentionally lightweight and suitable for library consumers that
- * want a ready-to-use command bus without introducing an additional navigation abstraction.
+ * Navigation is modeled as a presentation concern in CoreUI, while this concrete runtime
+ * implementation lives in the data layer to keep the clean-architecture split honest.
  */
 class NavigationManagerImpl : NavigationManager {
 
@@ -23,6 +26,7 @@ class NavigationManagerImpl : NavigationManager {
         if (route == _currentRoute.value && !options.allowRepeatOnSameRoute) {
             return
         }
+
         _currentRoute.value = route
         _navigationCommands.tryEmit(NavigationCommand.Navigate(route, options))
     }
@@ -39,6 +43,7 @@ class NavigationManagerImpl : NavigationManager {
         if (route == _currentRoute.value) {
             return
         }
+
         _currentRoute.value = route
         _navigationCommands.tryEmit(
             NavigationCommand.NavigateAndClearBackStack(

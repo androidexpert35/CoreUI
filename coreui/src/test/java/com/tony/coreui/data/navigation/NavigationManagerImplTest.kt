@@ -1,7 +1,6 @@
 package com.tony.coreui.data.navigation
 
 import com.tony.coreui.presentation.navigation.NavigationCommand
-import com.tony.coreui.presentation.navigation.NavigationManagerImpl
 import com.tony.coreui.presentation.navigation.NavigationOptions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
