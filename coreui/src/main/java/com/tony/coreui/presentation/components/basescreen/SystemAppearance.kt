@@ -11,6 +11,16 @@ import androidx.core.view.WindowCompat
 
 /**
  * Synchronizes system bar colors and icon appearance with the active screen styling.
+ *
+ * This composable applies the requested colors to the host [android.view.Window] and updates icon
+ * contrast for both system bars. When explicit icon preferences are not provided, the values are
+ * inferred from the luminance of the corresponding bar colors.
+ *
+ * @param statusBarColor color applied to the status bar.
+ * @param navigationBarColor color applied to the navigation bar.
+ * @param useLightStatusIcons when non-null, explicitly requests light or dark status bar icons.
+ * @param useLightNavigationIcons when non-null, explicitly requests light or dark navigation bar
+ * icons.
  */
 @Composable
 @Suppress("DEPRECATION")

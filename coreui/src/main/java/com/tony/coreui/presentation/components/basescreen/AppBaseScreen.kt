@@ -22,14 +22,41 @@ private const val EnterAnimationDurationMillis = 220
 private const val ExitAnimationDurationMillis = 150
 
 /**
- * Reusable screen scaffold that orchestrates content, loading and error rendering.
+ * Displays a reusable screen scaffold that coordinates content, loading, and error rendering.
  *
- * This composable is intended to be the default shell for feature screens that expose a [UIState]
- * from [com.tony.coreui.presentation.viewmodel.BaseViewModel].
+ * `AppBaseScreen` is designed as the default container for feature screens backed by a [UIState],
+ * typically exposed from
+ * [com.tony.coreui.presentation.viewmodel.BaseViewModel]. It applies system bar styling, renders
+ * the latest successful content when available, and overlays loading or error UI according to the
+ * current state.
+ *
+ * By default, loading feedback is rendered through [LoadingScreen] and failures are surfaced
+ * through [BaseDialog]. Callers can replace either presentation with custom composable content
+ * when a feature requires a different visual treatment.
  *
  * When the built-in error dialog is used, [onErrorDialogDismiss] is invoked whenever the dialog
- * is dismissed through one of its actions. This allows screens to keep the backing
- * [UIState.showErrorDialog] flag in sync without repeating the same close logic for every button.
+ * is dismissed through one of its actions. This makes it easy to keep
+ * [UIState.showErrorDialog] synchronized with the underlying state holder.
+ *
+ * @param uiState current screen state containing status, renderable data, and optional error
+ * information.
+ * @param statusBarColor color applied to the status bar while this screen is composed.
+ * @param navigationBarColor color applied to the navigation bar while this screen is composed.
+ * @param useLightStatusIcons when non-null, explicitly controls whether light status bar icons are
+ * requested; otherwise the value is inferred from [statusBarColor].
+ * @param useLightNavigationIcons when non-null, explicitly controls whether light navigation bar
+ * icons are requested; otherwise the value is inferred from [navigationBarColor].
+ * @param containerColor background color of the full-screen [Surface] that hosts this layout.
+ * @param errorDialogConfig configuration used by the default error dialog when
+ * [UIState.showErrorDialog] is `true`.
+ * @param loadingType built-in loading presentation strategy to use when [UIStatus.LOADING] is
+ * active.
+ * @param loadingScreen optional custom loading content. When provided, it replaces the default
+ * [LoadingScreen] for all enabled loading modes.
+ * @param errorScreen optional custom full-screen error content shown when [uiState] is in the
+ * error state and [UIError] is available.
+ * @param onErrorDialogDismiss callback invoked when the built-in error dialog is dismissed.
+ * @param content main render function that receives the latest non-null [UIState.data] value.
  */
 @Composable
 fun <T> AppBaseScreen(

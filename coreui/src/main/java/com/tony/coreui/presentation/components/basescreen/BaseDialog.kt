@@ -25,7 +25,24 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
 /**
- * Generic Material 3 dialog used by the library for confirmation and error flows.
+ * Displays a generic Material 3 dialog used by the library for confirmation and error flows.
+ *
+ * This composable provides a consistent dialog surface with an optional icon and up to three
+ * actions: dismiss, retry, and confirm. Button rows are only rendered for the actions whose text
+ * and callback are both supplied.
+ *
+ * @param onDismissRequest callback invoked when the dialog should be dismissed.
+ * @param title primary dialog title.
+ * @param message supporting message displayed below [title].
+ * @param confirmButtonText label used for the primary confirmation action.
+ * @param onConfirm callback invoked when the primary action is selected.
+ * @param modifier [Modifier] applied to the dialog card container.
+ * @param icon optional icon shown above the title.
+ * @param dismissButtonText optional label for the dismiss or cancel action.
+ * @param onCancel optional callback invoked when the dismiss action is selected.
+ * @param retryButtonText optional label for the retry action.
+ * @param onRetry optional callback invoked when the retry action is selected.
+ * @param properties [DialogProperties] used to customize platform dialog behavior.
  */
 @Composable
 fun BaseDialog(

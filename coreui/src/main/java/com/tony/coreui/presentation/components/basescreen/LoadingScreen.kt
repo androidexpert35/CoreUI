@@ -25,7 +25,17 @@ import androidx.compose.ui.unit.dp
 import com.tony.coreui.R
 
 /**
- * Material 3 loading surface for fullscreen or overlay presentation.
+ * Displays a Material 3 loading surface for full-screen or overlay presentation.
+ *
+ * When [progress] is `null`, an indeterminate circular indicator is shown. When [progress] is
+ * provided, the component switches to a linear determinate indicator and exposes the percentage in
+ * the supporting text.
+ *
+ * @param modifier [Modifier] applied to the full-screen container.
+ * @param loadingText optional message shown as the primary loading label. When `null`, a default
+ * localized string is used.
+ * @param progress optional progress percentage in the `0..100` range.
+ * @param backgroundColor background color drawn behind the loading card.
  */
 @Composable
 fun LoadingScreen(

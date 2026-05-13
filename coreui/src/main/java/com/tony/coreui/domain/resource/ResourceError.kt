@@ -10,6 +10,9 @@ sealed interface ResourceError {
 
     /**
      * Business-logic failure that does not fit a more specific category.
+     *
+     * @param errorMessage optional user-facing or diagnostic description of the failure.
+     * @param errorCode optional machine-readable code associated with the failure.
      */
     data class LogicError(
         val errorMessage: String?,
@@ -18,6 +21,9 @@ sealed interface ResourceError {
 
     /**
      * Validation failure associated with optional [field] metadata.
+     *
+     * @param message description of the validation issue.
+     * @param field optional field name associated with the validation failure.
      */
     data class ValidationError(
         val message: String,
@@ -26,6 +32,8 @@ sealed interface ResourceError {
 
     /**
      * Persistent storage failure related to local database access.
+     *
+     * @param message description of the storage failure.
      */
     data class DatabaseError(
         val message: String
@@ -33,6 +41,8 @@ sealed interface ResourceError {
 
     /**
      * Persistent storage failure unrelated to database access.
+     *
+     * @param message description of the storage failure.
      */
     data class StorageError(
         val message: String
@@ -40,6 +50,9 @@ sealed interface ResourceError {
 
     /**
      * Failure returned by a remote or platform service.
+     *
+     * @param message description of the service failure.
+     * @param errorCode optional machine-readable code returned by the service.
      */
     data class ServiceError(
         val message: String,
@@ -48,6 +61,9 @@ sealed interface ResourceError {
 
     /**
      * Network connectivity or transport failure.
+     *
+     * @param message description of the connectivity or transport issue.
+     * @param httpCode optional HTTP status code associated with the failure.
      */
     data class NetworkError(
         val message: String,

@@ -27,7 +27,21 @@ import androidx.compose.ui.unit.dp
 import com.tony.coreui.R
 
 /**
- * Full-screen error surface for fatal states or unrecoverable fallback flows.
+ * Displays a full-screen error surface for fatal states or unrecoverable fallback flows.
+ *
+ * The default layout centers a Material 3 card containing an error icon, title, description, and
+ * up to three optional actions. Buttons are rendered only when both their label and callback are
+ * provided.
+ *
+ * @param title short headline describing the failure.
+ * @param description user-facing explanation of the current error state.
+ * @param modifier [Modifier] applied to the outer full-screen [Surface].
+ * @param primaryButtonText optional label for the primary recovery action.
+ * @param onPrimaryButtonClick optional callback invoked for the primary recovery action.
+ * @param secondaryButtonText optional label for the secondary action.
+ * @param onSecondaryButtonClick optional callback invoked for the secondary action.
+ * @param tertiaryButtonText optional label for the tertiary action.
+ * @param onTertiaryButtonClick optional callback invoked for the tertiary action.
  */
 @Composable
 fun ErrorScreen(

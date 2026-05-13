@@ -34,6 +34,11 @@ import kotlinx.coroutines.launch
  *
  * Subclasses are expected to implement [handleEvent] and use the provided helpers to update UI
  * state consistently across screens.
+ *
+ * @param UI_TYPE type of the renderable screen model exposed through [uiState].
+ * @param UI_EVENT type of events accepted through [onEvent].
+ * @param UI_EFFECT type of one-off effects emitted through [uiEffect].
+ * @param navigationManager optional navigation delegate used by the built-in navigation helpers.
  */
 abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
     private val navigationManager: NavigationManager? = null
@@ -60,6 +65,10 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
      *
      * Subclasses may override this method to plug a different resolution strategy in tests or
      * host-specific integrations.
+     *
+     * @param id string resource identifier.
+     * @param args optional formatting arguments supplied to the string resource.
+     * @return localized string resolved from [id], or the numeric id when resolution fails.
      */
     protected open fun resolveString(@StringRes id: Int, vararg args: Any): String {
         return try {
@@ -71,6 +80,12 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Maps an error payload to [UIError] and updates [uiState] accordingly.
+     *
+     * @param errorObject error payload to convert into presentation state.
+     * @param retryAction optional retry action attached to the resulting [UIError].
+     * @param processUiAfterError optional transformer that can derive replacement UI data from the
+     * resolved [UIError].
+     * @param processUIError optional post-processing step used to customize the resolved [UIError].
      */
     protected open fun handleError(
         errorObject: Any,
@@ -110,6 +125,10 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Converts a [ResourceError] into a localized [UIError].
+     *
+     * @param resource categorized domain or data-layer error.
+     * @param retryAction optional retry action attached to the resulting [UIError].
+     * @return localized presentation error derived from [resource].
      */
     protected open fun processErrorResource(
         resource: ResourceError?,
@@ -167,6 +186,15 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
     /**
      * Executes [dataFetchBlock], updates loading/success/error state and optionally invokes
      * [invokeOnCompletion] with the final success status.
+     *
+     * @param retryAction optional retry action attached to the resulting error state.
+     * @param dataFetchBlock suspend block that returns a [Resource] for the current request.
+     * @param processSuccess mapper that converts a successful resource payload into [UI_TYPE].
+     * @param updateUiAfterError optional transformer that can derive replacement UI data from the
+     * resulting [UIError].
+     * @param invokeOnCompletion optional callback invoked with `true` on success and `false` when
+     * the operation fails.
+     * @param skipLoading when `true`, prevents the automatic transition to [UIStatus.LOADING].
      */
     protected fun <RESOURCE> launchUiStateUpdate(
         retryAction: (() -> Unit)? = null,
@@ -209,6 +237,8 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Entry point for external UI events.
+     *
+     * @param event event emitted by the UI layer.
      */
     fun onEvent(event: UI_EVENT) {
         handleEvent(event)
@@ -216,11 +246,15 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Handles a UI event emitted by the screen.
+     *
+     * @param event event emitted by the UI layer.
      */
     protected abstract fun handleEvent(event: UI_EVENT)
 
     /**
      * Emits a one-off presentation effect.
+     *
+     * @param effect effect instance to emit.
      */
     protected fun emitEffect(effect: UI_EFFECT) {
         _uiEffect.tryEmit(effect)
@@ -229,6 +263,7 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
     /**
      * Shows or hides the default error dialog.
      *
+     * @param value `true` to show the dialog, `false` to hide it.
      * @return the latest UI data after the flag update.
      */
     fun showErrorPopup(value: Boolean): UI_TYPE? {
@@ -248,6 +283,8 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Replaces the current [UIState.data] value.
+     *
+     * @param newData new renderable data to expose.
      */
     protected fun updateUiData(newData: UI_TYPE?) {
         _uiState.update { it.copy(data = newData) }
@@ -255,6 +292,8 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Applies a custom [UIState] transformation.
+     *
+     * @param transform state transformation applied atomically to the current value.
      */
     protected fun updateUiState(transform: (UIState<UI_TYPE>) -> UIState<UI_TYPE>) {
         _uiState.update(transform)
@@ -262,6 +301,8 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Launches a coroutine tied to [viewModelScope] using the shared [exceptionHandler].
+     *
+     * @param block suspend work to execute.
      */
     protected inline fun executeAsync(crossinline block: suspend () -> Unit) {
         viewModelScope.launch(exceptionHandler) {
@@ -284,6 +325,8 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Marks the screen as successful and optionally replaces its renderable data.
+     *
+     * @param newData optional renderable data to expose with the success state.
      */
     protected fun setSuccessState(newData: UI_TYPE? = uiState.value.data) {
         _uiState.update {
@@ -298,6 +341,8 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Marks the screen as idle and optionally replaces its renderable data.
+     *
+     * @param newData optional renderable data to expose with the idle state.
      */
     protected fun setIdleState(newData: UI_TYPE? = uiState.value.data) {
         _uiState.update {
@@ -312,6 +357,9 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Delegates a navigation request to the configured [navigationManager], if any.
+     *
+     * @param route logical destination identifier understood by the host navigator.
+     * @param options framework-agnostic navigation options associated with the request.
      */
     fun navigateToRoute(route: String, options: NavigationOptions = NavigationOptions()) {
         navigationManager?.navigate(route, options)
@@ -326,6 +374,9 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
 
     /**
      * Delegates a back stack pop request to the configured [navigationManager], if any.
+     *
+     * @param route optional route that acts as the pop target.
+     * @param inclusive whether [route], when provided, should also be removed.
      */
     fun popBackStack(route: String? = null, inclusive: Boolean = false) {
         navigationManager?.popBackStack(route, inclusive)
@@ -334,6 +385,10 @@ abstract class BaseViewModel<UI_TYPE, UI_EVENT, UI_EFFECT>(
     /**
      * Delegates a navigation-and-clear-back-stack request to the configured [navigationManager],
      * if any.
+     *
+     * @param route logical destination identifier understood by the host navigator.
+     * @param popUpToRoute optional route used as the boundary for the clear-back-stack operation.
+     * @param inclusive whether [popUpToRoute], when provided, should also be removed.
      */
     fun navigateAndClearBackstackTo(
         route: String,
