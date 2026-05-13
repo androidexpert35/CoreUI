@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="coreui_action_ok">OK</string>
+    <string name="coreui_action_retry">Retry</string>
+    <string name="coreui_action_dismiss">Dismiss</string>
+    <string name="coreui_loading_label">Loading</string>
+    <string name="coreui_loading_secondary_label">Please wait a moment</string>
+    <string name="coreui_loading_progress_label">%1$d%% complete</string>
+    <string name="coreui_error_icon_content_description">Error icon</string>
+    <string name="coreui_error_generic_title">Something went wrong</string>
+    <string name="coreui_error_generic_fallback_message">An operation could not be completed.</string>
+    <string name="coreui_error_validation_title">Invalid input</string>
+    <string name="coreui_error_storage_title">Storage error</string>
+    <string name="coreui_error_database_title">Database error</string>
+    <string name="coreui_error_service_title">Service error</string>
+    <string name="coreui_error_network_title">Network error</string>
+    <string name="coreui_error_network_message">Please check your connection and try again.</string>
+    <string name="coreui_error_unexpected_title">Unexpected error</string>
+    <string name="coreui_error_unknown_fallback_message">An unexpected problem occurred.</string>
+    <string name="coreui_error_unknown_title">Unknown error</string>
+    <string name="coreui_error_unknown_message">The operation failed for an unknown reason.</string>
+</resources>
