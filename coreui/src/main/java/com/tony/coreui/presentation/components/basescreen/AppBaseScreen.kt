@@ -1,9 +1,5 @@
 package com.tony.coreui.presentation.components.basescreen
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -11,16 +7,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
-import com.tony.coreui.R
 import com.tony.coreui.presentation.state.UIError
-import com.tony.coreui.presentation.state.UIErrorDisplayMode
 import com.tony.coreui.presentation.state.UIState
 import com.tony.coreui.presentation.state.UIStatus
-
-private const val EnterAnimationDurationMillis = 220
-private const val ExitAnimationDurationMillis = 150
 
 /**
  * Displays a reusable screen scaffold that coordinates content, loading, and error rendering.
@@ -99,113 +89,41 @@ fun <T> AppBaseScreen(
         )
     }
 
-    val status = uiState.status
-    val data = uiState.data
-    val error = uiState.error
-    val isLoading = status == UIStatus.LOADING
-    val isError = status == UIStatus.ERROR
-    val shouldShowBuiltInErrorScreen =
-        isError && error != null && error.displayMode == UIErrorDisplayMode.FULL_SCREEN
-    val shouldShowBuiltInErrorDialog =
-        isError &&
-            error != null &&
-            uiState.showErrorDialog &&
-            error.displayMode == UIErrorDisplayMode.DIALOG
-    val hideContentForDefaultLoading =
-        isLoading &&
-            loadingType == BaseLoadingType.DEFAULT &&
-            renderPolicy.hideContentOnDefaultLoading
-    val hideContentForError =
-        shouldShowBuiltInErrorScreen &&
-            data != null &&
-            !renderPolicy.keepContentVisibleOnError
-    val shouldRenderContent = data != null && !hideContentForDefaultLoading && !hideContentForError
+    val resolvedState = resolveBaseScreenState(
+        uiState = uiState,
+        renderPolicy = renderPolicy,
+        loadingType = loadingType,
+        hasEmptyContent = emptyContent != null,
+        hasCustomErrorScreen = errorScreen != null
+    )
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = containerColor
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (shouldRenderContent) {
-                contentWithState?.invoke(data, uiState) ?: content(data)
-            } else if (
-                data == null &&
-                emptyContent != null &&
-                !isLoading &&
-                (!isError || error?.displayMode == UIErrorDisplayMode.NONE)
-            ) {
-                emptyContent()
-            }
+            BaseScreenContentLayer(
+                resolvedState = resolvedState,
+                uiState = uiState,
+                emptyContent = emptyContent,
+                contentWithState = contentWithState,
+                content = content
+            )
 
-            AnimatedVisibility(
-                visible = isLoading && loadingType != BaseLoadingType.NONE,
-                enter = fadeIn(animationSpec = tween(durationMillis = EnterAnimationDurationMillis)),
-                exit = fadeOut(animationSpec = tween(durationMillis = ExitAnimationDurationMillis))
-            ) {
-                if (loadingScreen != null) {
-                    loadingScreen()
-                } else {
-                    when (loadingType) {
-                        BaseLoadingType.DEFAULT -> LoadingScreen()
-                        BaseLoadingType.OVERLAY -> LoadingScreen(
-                            backgroundColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f)
-                        )
-                        BaseLoadingType.NONE -> Unit
-                    }
-                }
-            }
+            BaseScreenLoadingLayer(
+                showLoading = resolvedState.showLoading,
+                loadingType = loadingType,
+                loadingScreen = loadingScreen
+            )
 
-            if (errorScreen != null && isError && error != null) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(animationSpec = tween(durationMillis = EnterAnimationDurationMillis)),
-                    exit = fadeOut(animationSpec = tween(durationMillis = ExitAnimationDurationMillis))
-                ) {
-                    errorScreen(error)
-                }
-            } else if (shouldShowBuiltInErrorScreen) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(animationSpec = tween(durationMillis = EnterAnimationDurationMillis)),
-                    exit = fadeOut(animationSpec = tween(durationMillis = ExitAnimationDurationMillis))
-                ) {
-                    ErrorScreen(
-                        title = error.title,
-                        description = error.message,
-                        primaryButtonText = if (error.retryAction != null) {
-                            stringResource(R.string.coreui_action_retry)
-                        } else {
-                            null
-                        },
-                        onPrimaryButtonClick = error.retryAction
-                    )
-                }
-            } else if (shouldShowBuiltInErrorDialog) {
-                val dismissErrorDialog = {
-                    onErrorDialogDismiss()
-                    errorDialogConfig.onDismissRequest?.invoke()
-                    Unit
-                }
-
-                if (errorDialog != null) {
-                    errorDialog(error, dismissErrorDialog)
-                } else {
-                    BaseDialog(
-                        title = error.title,
-                        message = error.message,
-                        confirmButtonText = errorDialogConfig.confirmButtonText
-                            ?: stringResource(R.string.coreui_action_ok),
-                        retryButtonText = errorDialogConfig.retryButtonText
-                            ?: stringResource(R.string.coreui_action_retry),
-                        dismissButtonText = errorDialogConfig.dismissButtonText,
-                        onConfirm = errorDialogConfig.onConfirm,
-                        onRetry = errorDialogConfig.onRetry ?: error.retryAction,
-                        onCancel = errorDialogConfig.onCancel,
-                        onDismissRequest = dismissErrorDialog,
-                        properties = dialogProperties
-                    )
-                }
-            }
+            BaseScreenErrorLayer(
+                errorPresentation = resolvedState.errorPresentation,
+                errorDialogConfig = errorDialogConfig,
+                dialogProperties = dialogProperties,
+                errorDialog = errorDialog,
+                errorScreen = errorScreen,
+                onErrorDialogDismiss = onErrorDialogDismiss
+            )
         }
     }
 }
