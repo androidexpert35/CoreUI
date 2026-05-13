@@ -1,7 +1,11 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    id("maven-publish")
 }
+
+group = "com.tony.coreui"
+version = "1.0.0"
 
 android {
     namespace = "com.tony.coreui"
@@ -26,6 +30,12 @@ android {
         compose = true
     }
     resourcePrefix = "coreui_"
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {
@@ -49,4 +59,34 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            register<MavenPublication>("release") {
+                groupId = group.toString()
+                artifactId = "coreui"
+                version = version.toString()
+
+                from(components["release"])
+            }
+        }
+
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                url = uri("https://maven.pkg.github.com/androidexpert35/CoreUI")
+                credentials {
+                    username = System.getenv("GITHUB_ACTOR")
+                        ?: project.findProperty("gpr.user")?.toString()
+                        ?: "androidexpert35"
+
+                    password = System.getenv("GITHUB_TOKEN")
+                        ?: project.findProperty("gpr.key")?.toString()
+                        ?: ""
+                }
+            }
+        }
+    }
 }

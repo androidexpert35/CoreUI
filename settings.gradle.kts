@@ -23,5 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "CoreUI"
-include(":app")
+include(":sample")
 include(":coreui")

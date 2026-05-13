@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\antyc\\\\AndroidStudioProjects\\\\CoreUI\" -Recurse -Directory -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(grep -E \"\\\\.\\(kt|xml\\)$\")"
+    ]
+  }
+}
