@@ -53,6 +53,12 @@ import com.tony.coreui.sample.app.sampleViewModelFactory
 import com.tony.coreui.sample.domain.model.DetailSection
 import kotlinx.coroutines.flow.collectLatest
 
+/**
+ * Route entry point for the customization-heavy detail feature.
+ *
+ * This route receives the typed navigation arguments and constructs the ViewModel with the custom
+ * error mapper that powers the more advanced `AppBaseScreen` behaviors in the sample.
+ */
 @Composable
 fun DetailRoute(
     albumId: Long,
@@ -77,6 +83,12 @@ fun DetailRoute(
     )
 }
 
+/**
+ * Demonstrates the more flexible side of `AppBaseScreen`.
+ *
+ * Compared to the list screen, this variant opts into overlay loading, custom full-screen error
+ * rendering, and `contentWithState` so the host can react to `UIErrorDisplayMode.NONE`.
+ */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun DetailScreen(
@@ -127,6 +139,19 @@ private fun DetailScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
+            val renderContent = @Composable { model: DetailUiModel, state: UIState<DetailUiModel> ->
+                DetailContent(
+                    model = model,
+                    uiState = state,
+                    initialSection = initialSection,
+                    onRefresh = { viewModel.onEvent(DetailEvent.RefreshRequested) },
+                    onServiceFailure = { viewModel.onEvent(DetailEvent.ServiceFailureRequested) },
+                    onHostWarning = { viewModel.onEvent(DetailEvent.HostWarningRequested) },
+                    onOpenRelated = { viewModel.onEvent(DetailEvent.RelatedAlbumRequested) },
+                    onReset = { viewModel.onEvent(DetailEvent.ResetToDefaultsRequested) }
+                )
+            }
+
             AppBaseScreen(
                 uiState = uiState,
                 loadingType = BaseLoadingType.OVERLAY,
@@ -139,34 +164,15 @@ private fun DetailScreen(
                         onReset = { viewModel.onEvent(DetailEvent.ResetToDefaultsRequested) }
                     )
                 },
-                contentWithState = { model, state ->
-                    DetailContent(
-                        model = model,
-                        uiState = state,
-                        initialSection = initialSection,
-                        onRefresh = { viewModel.onEvent(DetailEvent.RefreshRequested) },
-                        onServiceFailure = { viewModel.onEvent(DetailEvent.ServiceFailureRequested) },
-                        onHostWarning = { viewModel.onEvent(DetailEvent.HostWarningRequested) },
-                        onOpenRelated = { viewModel.onEvent(DetailEvent.RelatedAlbumRequested) },
-                        onReset = { viewModel.onEvent(DetailEvent.ResetToDefaultsRequested) }
-                    )
-                }
+                contentWithState = renderContent
             ) { model ->
-                DetailContent(
-                    model = model,
-                    uiState = uiState,
-                    initialSection = initialSection,
-                    onRefresh = { viewModel.onEvent(DetailEvent.RefreshRequested) },
-                    onServiceFailure = { viewModel.onEvent(DetailEvent.ServiceFailureRequested) },
-                    onHostWarning = { viewModel.onEvent(DetailEvent.HostWarningRequested) },
-                    onOpenRelated = { viewModel.onEvent(DetailEvent.RelatedAlbumRequested) },
-                    onReset = { viewModel.onEvent(DetailEvent.ResetToDefaultsRequested) }
-                )
+                renderContent(model, uiState)
             }
         }
     }
 }
 
+/** Main detail body rendered by `AppBaseScreen.contentWithState`. */
 @Composable
 private fun DetailContent(
     model: DetailUiModel,
@@ -309,6 +315,7 @@ private fun DetailContent(
     }
 }
 
+/** Reusable narrative card for the defaults and customization explanation blocks. */
 @Composable
 private fun DetailSectionCard(
     title: String,
@@ -336,7 +343,7 @@ private fun DetailSectionCard(
             bullets.forEach { bullet ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "•",
+                        text = "-",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -350,6 +357,7 @@ private fun DetailSectionCard(
     }
 }
 
+/** Inline warning rendered by the host when built-in error UI is intentionally suppressed. */
 @Composable
 private fun HostManagedWarning(error: UIError) {
     ElevatedCard(
@@ -381,6 +389,7 @@ private fun HostManagedWarning(error: UIError) {
     }
 }
 
+/** Custom full-screen error surface used for the detail screen's service outage scenario. */
 @Composable
 private fun DetailServiceErrorScreen(
     error: UIError,

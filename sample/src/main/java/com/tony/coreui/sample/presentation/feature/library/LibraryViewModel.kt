@@ -11,6 +11,12 @@ import com.tony.coreui.sample.domain.model.LibraryPreviewMode
 import com.tony.coreui.sample.domain.repository.ShowcaseRepository
 import com.tony.coreui.sample.presentation.navigation.SampleRoutes
 
+/**
+ * ViewModel for the defaults-first sample screen.
+ *
+ * The feature logic stays intentionally small so the sample highlights how much `BaseViewModel`
+ * and `AppBaseScreen` provide out of the box.
+ */
 class LibraryViewModel(
     initialFilter: DemoFilter,
     private val repository: ShowcaseRepository,
@@ -27,19 +33,34 @@ class LibraryViewModel(
         loadAlbums()
     }
 
+    /** Handles all user interactions emitted by the list screen. */
     override fun handleEvent(event: LibraryEvent) {
         when (event) {
             is LibraryEvent.FilterSelected -> {
                 if (selectedFilter == event.filter) return
                 selectedFilter = event.filter
-                emitEffect(LibraryEffect.ShowMessage(resolveString(R.string.sample_library_snackbar_filter_changed, filterLabel(event.filter))))
+                emitEffect(
+                    LibraryEffect.ShowMessage(
+                        resolveString(
+                            R.string.sample_library_snackbar_filter_changed,
+                            filterLabel(event.filter)
+                        )
+                    )
+                )
                 loadAlbums()
             }
 
             is LibraryEvent.PreviewModeSelected -> {
                 if (previewMode == event.previewMode) return
                 previewMode = event.previewMode
-                emitEffect(LibraryEffect.ShowMessage(resolveString(R.string.sample_library_snackbar_preview_changed, previewLabel(event.previewMode))))
+                emitEffect(
+                    LibraryEffect.ShowMessage(
+                        resolveString(
+                            R.string.sample_library_snackbar_preview_changed,
+                            previewLabel(event.previewMode)
+                        )
+                    )
+                )
                 loadAlbums()
             }
 
@@ -51,7 +72,14 @@ class LibraryViewModel(
                         data = currentState.data?.copy(detailSection = detailSection)
                     )
                 }
-                emitEffect(LibraryEffect.ShowMessage(resolveString(R.string.sample_library_snackbar_section_changed, sectionLabel(event.detailSection))))
+                emitEffect(
+                    LibraryEffect.ShowMessage(
+                        resolveString(
+                            R.string.sample_library_snackbar_section_changed,
+                            sectionLabel(event.detailSection)
+                        )
+                    )
+                )
             }
 
             is LibraryEvent.AlbumSelected -> {
@@ -67,6 +95,11 @@ class LibraryViewModel(
         }
     }
 
+    /**
+     * Reloads the catalog using the current filter and preview mode.
+     *
+     * This is the sample's main example of `launchUiStateUpdate` used in its default form.
+     */
     private fun loadAlbums() {
         launchUiStateUpdate(
             retryAction = ::loadAlbums,
@@ -89,12 +122,13 @@ class LibraryViewModel(
         )
     }
 
+    /** Converts the domain model into the lighter-weight card model rendered by the list UI. */
     private fun toAlbumCardUiModel(album: DemoAlbum): LibraryAlbumCardUiModel {
         val qualifiers = buildList {
             add("${album.trackCount} tracks")
             if (album.focusReady) add("focus-ready")
             if (album.downloaded) add("cached")
-        }.joinToString("  •  ")
+        }.joinToString(" | ")
 
         return LibraryAlbumCardUiModel(
             id = album.id,

@@ -37,6 +37,7 @@ private val DarkColors = darkColorScheme(
     surfaceVariant = Color(0xFF202731)
 )
 
+/** Material theme used by the sample app's Compose screens. */
 @Composable
 fun CoreUiSampleTheme(content: @Composable () -> Unit) {
     MaterialTheme(

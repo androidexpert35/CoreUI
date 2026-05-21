@@ -12,6 +12,12 @@ import com.tony.coreui.sample.domain.model.DetailSection
 import com.tony.coreui.sample.domain.repository.ShowcaseRepository
 import com.tony.coreui.sample.presentation.navigation.SampleRoutes
 
+/**
+ * ViewModel for the detail screen that demonstrates more advanced CoreUI customization.
+ *
+ * It still uses `BaseViewModel`, but it also preserves content across some failures and relies on
+ * a custom `UiErrorMapper` to change how specific error families are presented.
+ */
 class DetailViewModel(
     private val albumId: Long,
     private val repository: ShowcaseRepository,
@@ -26,21 +32,25 @@ class DetailViewModel(
         load(mode = DetailLoadMode.INITIAL)
     }
 
+    /** Handles refreshes, failure demos, and navigation for the detail screen. */
     override fun handleEvent(event: DetailEvent) {
         when (event) {
             DetailEvent.RefreshRequested -> load(
                 mode = DetailLoadMode.REFRESH,
                 preserveCurrentContentOnError = true
             )
+
             DetailEvent.ServiceFailureRequested -> load(
                 mode = DetailLoadMode.SERVICE_FAILURE,
                 preserveCurrentContentOnError = true
             )
+
             DetailEvent.HostWarningRequested -> load(
                 mode = DetailLoadMode.HOST_HANDLED_WARNING,
                 preserveCurrentContentOnError = true,
                 skipLoading = true
             )
+
             DetailEvent.ResetToDefaultsRequested -> {
                 navigateAndClearBackstackTo(
                     route = SampleRoutes.library.createRoute(
@@ -50,6 +60,7 @@ class DetailViewModel(
                     inclusive = true
                 )
             }
+
             DetailEvent.NavigateUpRequested -> navigateUp()
             DetailEvent.RetryInitialLoadRequested -> load(mode = DetailLoadMode.INITIAL)
             DetailEvent.RelatedAlbumRequested -> uiState.value.data?.relatedAlbumId?.let { relatedId ->
@@ -63,6 +74,12 @@ class DetailViewModel(
         }
     }
 
+    /**
+     * Loads or refreshes the detail payload.
+     *
+     * The `preserveCurrentContentOnError` switch is the key customization hook in this sample:
+     * it keeps the last successful content visible while still recording the new failure state.
+     */
     private fun load(
         mode: DetailLoadMode,
         preserveCurrentContentOnError: Boolean = false,
@@ -96,12 +113,13 @@ class DetailViewModel(
         )
     }
 
+    /** Maps the domain model into the Compose-facing UI model consumed by the screen. */
     private fun toDetailUiModel(detail: DemoAlbumDetail): DetailUiModel = DetailUiModel(
         id = detail.id,
         title = detail.title,
         artist = detail.artist,
         summary = detail.summary,
-        statsLine = "${detail.trackCount} tracks  •  ${detail.artist}",
+        statsLine = "${detail.trackCount} tracks | ${detail.artist}",
         lastUpdatedLabel = detail.lastUpdatedLabel,
         defaultsHighlights = detail.defaultsHighlights,
         customizationHighlights = detail.customizationHighlights,

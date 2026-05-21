@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tony.coreui.presentation.components.basescreen.AppBaseScreen
+import com.tony.coreui.presentation.components.basescreen.ErrorDialogConfig
 import com.tony.coreui.sample.R
 import com.tony.coreui.sample.app.SampleAppContainer
 import com.tony.coreui.sample.app.sampleViewModelFactory
@@ -53,6 +54,12 @@ import com.tony.coreui.sample.domain.model.DetailSection
 import com.tony.coreui.sample.domain.model.LibraryPreviewMode
 import kotlinx.coroutines.flow.collectLatest
 
+/**
+ * Route entry point for the defaults-first sample feature.
+ *
+ * The navigation host passes the typed initial filter argument here and the route constructs the
+ * screen's ViewModel from the shared sample container.
+ */
 @Composable
 fun LibraryRoute(
     initialFilter: DemoFilter,
@@ -74,6 +81,13 @@ fun LibraryRoute(
     )
 }
 
+/**
+ * Demonstrates `AppBaseScreen` in its most convenient form.
+ *
+ * This screen intentionally sticks close to the defaults so consumers can see how little feature
+ * code is required when they accept the library's built-in loading, dialog-error, and empty-state
+ * behavior.
+ */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun LibraryScreen(
@@ -205,27 +219,27 @@ private fun LibraryScreen(
             ) {
                 AppBaseScreen(
                     uiState = uiState,
+                    errorDialogConfig = ErrorDialogConfig(
+                        onRetry = { viewModel.onEvent(LibraryEvent.ReloadRequested) }
+                    ),
+                    emptyContent = { EmptyLibraryState() },
                     onErrorDialogDismiss = viewModel::dismissErrorPopup
                 ) { model ->
-                    if (model.albums.isEmpty()) {
-                        EmptyLibraryState()
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(
-                                items = model.albums,
-                                key = LibraryAlbumCardUiModel::id
-                            ) { album ->
-                                LibraryAlbumCard(
-                                    album = album,
-                                    onClick = {
-                                        viewModel.onEvent(LibraryEvent.AlbumSelected(album.id))
-                                    }
-                                )
-                            }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = model.albums,
+                            key = LibraryAlbumCardUiModel::id
+                        ) { album ->
+                            LibraryAlbumCard(
+                                album = album,
+                                onClick = {
+                                    viewModel.onEvent(LibraryEvent.AlbumSelected(album.id))
+                                }
+                            )
                         }
                     }
                 }
@@ -234,6 +248,7 @@ private fun LibraryScreen(
     }
 }
 
+/** Groups a set of related controls under a small section label. */
 @Composable
 private fun ControlSection(
     title: String,
@@ -254,6 +269,7 @@ private fun ControlSection(
     }
 }
 
+/** Compact album card used by the list screen's `AppBaseScreen` content lambda. */
 @Composable
 private fun LibraryAlbumCard(
     album: LibraryAlbumCardUiModel,
@@ -333,6 +349,7 @@ private fun LibraryAlbumCard(
     }
 }
 
+/** Empty-state body delegated to `AppBaseScreen.emptyContent`. */
 @Composable
 private fun EmptyLibraryState() {
     ElevatedCard(

@@ -6,6 +6,7 @@ import com.tony.coreui.presentation.navigation.route.route
 import com.tony.coreui.sample.domain.model.DemoFilter
 import com.tony.coreui.sample.domain.model.DetailSection
 
+/** Central registry of typed routes used by the sample app. */
 object SampleRoutes {
     val libraryFilter = enumQueryArgument(
         name = "filter",

@@ -11,6 +11,12 @@ import com.tony.coreui.sample.domain.repository.ShowcaseRepository
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * In-memory repository used by the sample app.
+ *
+ * It intentionally exposes several deterministic success and failure paths so the sample can
+ * demonstrate CoreUI loading, dialog errors, full-screen errors, and host-managed warnings.
+ */
 class FakeShowcaseRepository : ShowcaseRepository {
 
     private val albums = listOf(

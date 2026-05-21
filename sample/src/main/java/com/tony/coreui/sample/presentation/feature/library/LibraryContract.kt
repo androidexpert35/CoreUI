@@ -4,6 +4,7 @@ import com.tony.coreui.sample.domain.model.DemoFilter
 import com.tony.coreui.sample.domain.model.DetailSection
 import com.tony.coreui.sample.domain.model.LibraryPreviewMode
 
+/** Full render model consumed by the defaults-first library screen. */
 data class LibraryUiModel(
     val title: String,
     val subtitle: String,
@@ -13,6 +14,7 @@ data class LibraryUiModel(
     val albums: List<LibraryAlbumCardUiModel>
 )
 
+/** Compact card model rendered inside the library screen's scrolling content. */
 data class LibraryAlbumCardUiModel(
     val id: Long,
     val title: String,
@@ -22,6 +24,7 @@ data class LibraryAlbumCardUiModel(
     val badge: String
 )
 
+/** User interactions supported by the library screen. */
 sealed interface LibraryEvent {
     data class FilterSelected(val filter: DemoFilter) : LibraryEvent
     data class PreviewModeSelected(val previewMode: LibraryPreviewMode) : LibraryEvent
@@ -30,6 +33,7 @@ sealed interface LibraryEvent {
     data object ReloadRequested : LibraryEvent
 }
 
+/** One-off effects emitted by the library screen. */
 sealed interface LibraryEffect {
     data class ShowMessage(val message: String) : LibraryEffect
 }

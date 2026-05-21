@@ -1,5 +1,6 @@
 package com.tony.coreui.sample.presentation.feature.detail
 
+/** Full render model consumed by the detail screen. */
 data class DetailUiModel(
     val id: Long,
     val title: String,
@@ -13,6 +14,7 @@ data class DetailUiModel(
     val relatedAlbumTitle: String?
 )
 
+/** User interactions supported by the detail screen. */
 sealed interface DetailEvent {
     data object RefreshRequested : DetailEvent
     data object ServiceFailureRequested : DetailEvent
@@ -23,6 +25,7 @@ sealed interface DetailEvent {
     data object RelatedAlbumRequested : DetailEvent
 }
 
+/** One-off effects emitted by the detail screen. */
 sealed interface DetailEffect {
     data class ShowMessage(val message: String) : DetailEffect
 }
