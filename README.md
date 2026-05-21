@@ -45,6 +45,22 @@ dependencies {
 - **Command-based Navigation**: Decouple your ViewModels from the `NavController`.
 - **Composable Scaffolds**: `AppBaseScreen` handles loading and error states automatically.
 
+## Runnable Example
+
+The `sample` module is now a full Compose app that demonstrates two complementary usage styles:
+
+- **Defaults-first list screen**: a small feature screen that mostly relies on CoreUI defaults for
+  loading, retry, and dialog errors.
+- **Customization-focused detail screen**: the same foundation extended with overlay loading,
+  full-screen error remapping, host-managed warnings, and typed deep-link arguments.
+
+Start with these files if you want the fastest walkthrough:
+
+- [`sample/src/main/java/com/tony/coreui/sample/presentation/feature/library/LibraryViewModel.kt`](</C:/Users/antyc/AndroidStudioProjects/CoreUI/sample/src/main/java/com/tony/coreui/sample/presentation/feature/library/LibraryViewModel.kt>)
+- [`sample/src/main/java/com/tony/coreui/sample/presentation/feature/library/LibraryScreen.kt`](</C:/Users/antyc/AndroidStudioProjects/CoreUI/sample/src/main/java/com/tony/coreui/sample/presentation/feature/library/LibraryScreen.kt>)
+- [`sample/src/main/java/com/tony/coreui/sample/presentation/feature/detail/DetailViewModel.kt`](</C:/Users/antyc/AndroidStudioProjects/CoreUI/sample/src/main/java/com/tony/coreui/sample/presentation/feature/detail/DetailViewModel.kt>)
+- [`sample/src/main/java/com/tony/coreui/sample/presentation/navigation/SampleNavigator.kt`](</C:/Users/antyc/AndroidStudioProjects/CoreUI/sample/src/main/java/com/tony/coreui/sample/presentation/navigation/SampleNavigator.kt>)
+
 ## Documentation
 
 For a deep dive into the architecture and API, see [AGENTS.md](doc/AGENTS.md).

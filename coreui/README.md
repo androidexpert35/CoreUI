@@ -152,3 +152,13 @@ The library keeps its ready-to-use defaults, but the main decision points are no
 - Navigation stays command-based so hosts can use the provided Compose bridge or replace the whole
   stack with their own approach.
 - `CoreUiStringProvider` should be initialized from the application process before non-composable string resolution occurs when you rely on the global default resolver.
+
+## Example app
+
+For a runnable end-to-end example, inspect the `sample` module in the repository. It mirrors the
+same clean-architecture split as the library and demonstrates:
+
+- a defaults-heavy screen built with `BaseViewModel` + `AppBaseScreen`
+- typed route arguments hosted by `CoreUiNavigator`
+- a second screen that customizes loading and error rendering without abandoning the library
+  primitives
