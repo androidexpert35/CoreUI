@@ -8,6 +8,21 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.tony.coreui.presentation.navigation.NavigationCommand
 import com.tony.coreui.presentation.navigation.NavigationManager
 
+/**
+ * Side-effect composable that connects a [NavigationManager] to a [NavHostController].
+ *
+ * Two launched effects are started:
+ * - one that keeps [NavigationManager.currentRoute] in sync with the back-stack entry reported
+ *   by [NavHostController.currentBackStackEntryAsState];
+ * - one that collects [NavigationManager.navigationCommands] and forwards each command to
+ *   [handleNavigationCommand].
+ *
+ * Place this composable once at the top of the navigation host hierarchy; it produces no visible
+ * UI output.
+ *
+ * @param navigationManager the manager whose command stream should be observed.
+ * @param navController the controller that will execute the commands.
+ */
 @Composable
 fun NavigationCommandBridge(
     navigationManager: NavigationManager,
@@ -27,6 +42,14 @@ fun NavigationCommandBridge(
     }
 }
 
+/**
+ * Translates a [NavigationCommand] into the corresponding [NavHostController] call.
+ *
+ * @receiver the controller on which the navigation action is performed.
+ * @param command the command to execute.
+ * @return `true` if a forward navigation occurred; the result of [navigateUp] or [popBackStack]
+ * for backwards-navigation commands.
+ */
 fun NavHostController.handleNavigationCommand(command: NavigationCommand): Boolean {
     return when (command) {
         is NavigationCommand.Navigate -> {

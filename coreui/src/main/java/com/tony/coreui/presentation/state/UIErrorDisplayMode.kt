@@ -7,7 +7,10 @@ package com.tony.coreui.presentation.state
  * built-in error UI entirely and render the state themselves.
  */
 enum class UIErrorDisplayMode {
+    /** Show the error in a dialog overlay, leaving any underlying content visible. */
     DIALOG,
+    /** Replace the current screen content with a dedicated full-screen error layout. */
     FULL_SCREEN,
+    /** Suppress all built-in error UI; the consumer is responsible for reacting to the error. */
     NONE
 }
