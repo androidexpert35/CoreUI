@@ -50,7 +50,7 @@ CoreUI/
 ├── app/                  # Demo application (not part of the library artifact)
 └── coreui/               # Library module → produces coreui.aar
     └── src/main/
-        ├── kotlin/com/tony/coreui/
+        ├── java/com/tony/coreui/
         └── res/values/strings.xml
 ```
 
@@ -294,14 +294,18 @@ val uiState: StateFlow<UIState<UI_TYPE>>   // observed by Composable
 val uiEffect: SharedFlow<UI_EFFECT>         // one-shot side effects (snackbar, navigation signal, etc.)
 ```
 
-### Abstract Method
+### Public Entry Point
 
 ```kotlin
-abstract fun handleEvent(event: UI_EVENT)
+fun onEvent(event: UI_EVENT)          // public — called by the Composable
 ```
 
-This is the **single entry point** for all UI interactions. Implement it with a `when`
-on the sealed event type.
+```kotlin
+protected abstract fun handleEvent(event: UI_EVENT)   // implement in subclass
+```
+
+`onEvent` is the **single public entry point** for all UI interactions; it delegates to
+`handleEvent`. Implement `handleEvent` with a `when` on the sealed event type.
 
 ### State Mutation Methods (protected)
 
@@ -398,12 +402,12 @@ sealed interface NavigationCommand {
 
 // Options for Navigate command
 data class NavigationOptions(
-    val launchSingleTop: Boolean = true,
+    val launchSingleTop: Boolean = false,
     val restoreState: Boolean = false,
     val popUpToRoute: String? = null,
     val popUpToInclusive: Boolean = false,
     val allowRepeatOnSameRoute: Boolean = false,
-    val extras: Bundle? = null
+    val extras: Map<String, Any?> = emptyMap()
 )
 ```
 
@@ -516,25 +520,25 @@ composable(
 ### Navigation Graph Nodes
 
 ```kotlin
-// A single screen destination
-data class NavigationDestination(val route: RouteDefinition) : NavigationNode
+// A single screen destination — route is derived from routeDefinition.routePattern
+data class NavigationDestination(val routeDefinition: RouteDefinition) : NavigationNode
 
 // A nested nav graph (flow)
 data class NavigationFlowNode(
-    val route: RouteDefinition,
+    override val route: String,
     val startDestination: NavigationDestination
 ) : NavigationNode
 
 // The root node of the entire graph
 data class NavigationRootNode(
-    val route: RouteDefinition,
-    val startDestination: NavigationDestination | NavigationFlowNode
+    override val route: String = "root",
+    val startDestination: NavigationNode           // accepts Destination or FlowNode
 ) : NavigationNode
 
 // Factory helpers
-fun destinationNode(route: RouteDefinition): NavigationDestination
-fun flowNode(route: RouteDefinition, startDestination: NavigationDestination): NavigationFlowNode
-fun rootNode(route: RouteDefinition, startDestination: ...): NavigationRootNode
+fun destinationNode(routeDefinition: RouteDefinition): NavigationDestination
+fun flowNode(route: String, startDestination: NavigationDestination): NavigationFlowNode
+fun rootNode(startDestination: NavigationNode, route: String = "root"): NavigationRootNode
 ```
 
 ### NavGraphBuilder Extensions
@@ -626,12 +630,13 @@ data class BaseScreenRenderPolicy(
 
 ```kotlin
 data class ErrorDialogConfig(
-    val onConfirm: (() -> Unit)? = null,
+    val onConfirm: () -> Unit = {},
     val onRetry: (() -> Unit)? = null,
     val onCancel: (() -> Unit)? = null,
-    val confirmText: String? = null,   // overrides default "OK"
-    val retryText: String? = null,
-    val cancelText: String? = null
+    val onDismissRequest: (() -> Unit)? = null,     // invoked after any dismiss action
+    val confirmButtonText: String? = null,           // overrides default "OK"
+    val retryButtonText: String? = null,
+    val dismissButtonText: String? = null
 )
 ```
 
@@ -676,15 +681,17 @@ fun ErrorScreen(
 ```kotlin
 @Composable
 fun BaseDialog(
+    onDismissRequest: () -> Unit,
     title: String,
     message: String,
     confirmButtonText: String,
     onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     dismissButtonText: String? = null,
-    onDismiss: (() -> Unit)? = null,
+    onCancel: (() -> Unit)? = null,
     retryButtonText: String? = null,
     onRetry: (() -> Unit)? = null,
-    icon: ImageVector? = null,
     properties: DialogProperties = DialogProperties()
 )
 ```
@@ -877,10 +884,7 @@ fun AlbumScreen(viewModel: AlbumViewModel = viewModel()) {
 ```kotlin
 @Composable
 fun AppRoot(navigationManager: NavigationManager) {
-    val root = rootNode(
-        route = route("root"),
-        startDestination = destinationNode(AppRoutes.album)
-    )
+    val root = rootNode(startDestination = destinationNode(AppRoutes.album))
 
     CoreUiNavigator(
         navigationManager = navigationManager,
