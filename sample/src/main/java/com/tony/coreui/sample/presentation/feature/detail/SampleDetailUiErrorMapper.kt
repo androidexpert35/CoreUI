@@ -9,6 +9,11 @@ import com.tony.coreui.presentation.state.UIError
 import com.tony.coreui.presentation.state.UIErrorDisplayMode
 import com.tony.coreui.sample.R
 
+/**
+ * Sample-specific error mapper for the detail feature.
+ *
+ * It remaps selected error families to prove that CoreUI's default error handling stays flexible.
+ */
 class SampleDetailUiErrorMapper(
     private val stringResolver: StringResolver = CoreUiStringProvider
 ) : UiErrorMapper {

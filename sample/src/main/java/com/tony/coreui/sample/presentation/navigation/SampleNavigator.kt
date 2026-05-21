@@ -23,6 +23,7 @@ private val showcaseFlow = flowNode(
 )
 private val root = rootNode(startDestination = showcaseFlow)
 
+/** Hosts the sample's typed navigation graph through `CoreUiNavigator`. */
 @Composable
 fun SampleNavigator(appContainer: SampleAppContainer) {
     CoreUiNavigator(
