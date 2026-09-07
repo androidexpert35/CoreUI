@@ -1,100 +1,178 @@
 # CoreUI
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/androidexpert35/CoreUI/releases)
+[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/androidexpert35/CoreUI/packages)
 [![API](https://img.shields.io/badge/API-29%2B-brightgreen.svg)](https://android-arsenal.com/api?level=29)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-7F52FF.svg)](https://kotlinlang.org)
 [![Compose BOM](https://img.shields.io/badge/Compose%20BOM-2026.03.01-4285F4.svg)](https://developer.android.com/jetpack/compose/bom)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A Jetpack Compose presentation library for Android that provides the foundational building blocks for state-driven, event-based applications — typed state management, a base ViewModel, command-based navigation, and ready-to-use screen scaffolds.
+## Build features, not presentation plumbing
 
----
+Every Android feature needs the same foundations: loading and error states, retry behavior,
+one-shot effects, navigation events, and a predictable contract between the `ViewModel` and
+Compose.
+
+**CoreUI packages those foundations into one small, reusable Jetpack Compose library.** It gives
+your screens a consistent state model, lifecycle-aware ViewModel helpers, typed navigation, and
+ready-to-customize loading and error surfaces—without forcing Hilt, Koin, or a specific app
+architecture on you.
+
+```text
+Repository result → BaseViewModel → UIState → AppBaseScreen → Content / Loading / Error
+                                      └──────→ one-shot effects
+                                      └──────→ navigation commands
+```
+
+The result: less repeated glue code, fewer state bugs, and feature screens that are easier to read,
+test, and evolve.
+
+## The problems CoreUI solves
+
+| Without a shared foundation | With CoreUI |
+|---|---|
+| Every screen invents its own loading and error flags | One `UIState<T>` models the complete screen lifecycle |
+| Async calls repeat the same `try/catch`, loading, and retry code | `launchUiStateUpdate` owns the success/error lifecycle |
+| ViewModels depend directly on `NavController` or expose ad-hoc events | `NavigationManager` keeps navigation command-based and decoupled |
+| Route arguments are assembled and parsed as fragile strings | Typed path/query arguments build and read routes consistently |
+| Loading, empty, dialog-error, and full-screen-error UI drift between features | `AppBaseScreen` applies the same behavior with opt-in customization |
+| Infrastructure errors leak into UI code | `ResourceError` and `UiErrorMapper` produce presentation-ready errors |
+| A foundation library dictates the app's DI framework | Constructor injection works; Hilt and Koin remain optional |
+
+## Why teams adopt it
+
+- **Ship screens faster** — start with the common state, async, error, and navigation decisions
+  already made.
+- **Make behavior predictable** — users get consistent loading, retry, and failure experiences
+  across the app.
+- **Reduce accidental complexity** — feature code focuses on domain data and user actions instead
+  of coordinating booleans and one-off callbacks.
+- **Keep architecture boundaries clean** — ViewModels issue navigation commands and expose state;
+  Compose renders it.
+- **Customize without forking** — replace the mapper, loading content, dialog, full-screen error,
+  render policy, string resolver, or the entire navigation bridge.
+- **Adopt incrementally** — use only the state/ViewModel layer, only the screen components, or the
+  complete stack.
+
+CoreUI is a good fit when you are building a multi-screen Compose app and want conventions without
+adopting a heavyweight framework. It is intentionally less useful for a one-screen prototype or
+for teams that already have an equivalent, mature presentation platform.
+
+## What you get
+
+- `UIState<T>` with explicit `IDLE`, `LOADING`, `SUCCESS`, and `ERROR` phases
+- `BaseViewModel<UI, EVENT, EFFECT>` with coroutine safety, state updates, error mapping, retry,
+  effects, and optional navigation
+- `AppBaseScreen` for content, empty, loading, dialog-error, and full-screen-error rendering
+- `Resource<T>` and extensible `ResourceError` categories for explicit result propagation
+- `UiErrorMapper` for translating technical/domain failures into user-ready messages
+- `NavigationManager`, typed routes, nested graph nodes, and an optional Compose navigation host
+- No mandatory dependency-injection framework
 
 ## Contents
 
-- [Features](#features)
-- [Architecture](#architecture)
+- [See the core workflow](#see-the-core-workflow)
 - [Installation](#installation)
-- [Getting Started](#getting-started)
-  - [Initializing the Library](#initializing-the-library)
-  - [State Management](#state-management)
-  - [Building a ViewModel](#building-a-viewmodel)
-  - [Typed Navigation](#typed-navigation)
-  - [Screen Scaffold](#screen-scaffold)
-  - [Error Handling](#error-handling)
-- [Module Structure](#module-structure)
+- [Quick start](#quick-start)
+- [Typed navigation](#typed-navigation)
+- [Customization](#customization)
+- [Architecture](#architecture)
 - [Public API](#public-api)
-- [Sample App](#sample-app)
+- [Sample app](#sample-app)
 - [Requirements](#requirements)
 - [License](#license)
 
----
+## See the core workflow
 
-## Features
+A feature only needs to describe its data, events, effects, and repository call. CoreUI coordinates
+the repetitive lifecycle around them.
 
-- **Typed UI State** — `UIState<T>` with explicit IDLE / LOADING / SUCCESS / ERROR status phases
-- **Base ViewModel** — abstract `BaseViewModel` with built-in coroutine safety, loading/error lifecycle, and effect emission
-- **Command-Based Navigation** — `NavigationManager` decouples ViewModels from `NavController`; supports typed routes with path and query arguments
-- **Screen Scaffold** — `AppBaseScreen` coordinates content, loading, and error layers with configurable policies
-- **Structured Error Model** — seven `ResourceError` categories mapped automatically to user-facing `UIError`
-- **No Mandatory DI** — constructor injection only; Hilt and Koin are both optional
+```kotlin
+data class AlbumsUiModel(val albums: List<Album>)
 
----
+sealed interface AlbumsEvent {
+    data object Reload : AlbumsEvent
+    data class AlbumSelected(val id: Long) : AlbumsEvent
+}
 
-## Architecture
+sealed interface AlbumsEffect {
+    data class ShowMessage(val message: String) : AlbumsEffect
+}
 
-CoreUI is layered to mirror clean architecture conventions:
+class AlbumsViewModel(
+    private val repository: AlbumRepository,
+    navigationManager: NavigationManager
+) : BaseViewModel<AlbumsUiModel, AlbumsEvent, AlbumsEffect>(navigationManager) {
 
+    init {
+        loadAlbums()
+    }
+
+    override fun handleEvent(event: AlbumsEvent) {
+        when (event) {
+            AlbumsEvent.Reload -> loadAlbums()
+            is AlbumsEvent.AlbumSelected -> navigateToRoute("album/${event.id}")
+        }
+    }
+
+    private fun loadAlbums() {
+        launchUiStateUpdate(
+            retryAction = ::loadAlbums,
+            dataFetchBlock = repository::getAlbums,
+            processSuccess = { AlbumsUiModel(albums = it) }
+        )
+    }
+}
 ```
-┌──────────────────────────────────────────────────┐
-│                  presentation/                   │
-│                                                  │
-│  state/          UIState · UIStatus · UIError    │
-│  viewmodel/      BaseViewModel                   │
-│  navigation/     NavigationManager · Routes      │
-│  components/     AppBaseScreen · LoadingScreen   │
-│                  ErrorScreen · BaseDialog        │
-│  error/          UiErrorMapper                   │
-├──────────────────────────────────────────────────┤
-│                    data/                         │
-│  navigation/     NavigationManagerImpl           │
-│  strings/        CoreUiStringProvider            │
-├──────────────────────────────────────────────────┤
-│                   domain/                        │
-│  resource/       Resource<T> · ResourceError     │
-└──────────────────────────────────────────────────┘
+
+The screen stays focused on rendering and forwarding user intent:
+
+```kotlin
+@Composable
+fun AlbumsScreen(viewModel: AlbumsViewModel) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    AppBaseScreen(
+        uiState = uiState,
+        errorDialogConfig = ErrorDialogConfig(
+            onRetry = { viewModel.onEvent(AlbumsEvent.Reload) }
+        ),
+        emptyContent = { EmptyAlbums() },
+        onErrorDialogDismiss = viewModel::dismissErrorPopup
+    ) { model ->
+        AlbumList(
+            albums = model.albums,
+            onAlbumClick = { viewModel.onEvent(AlbumsEvent.AlbumSelected(it)) }
+        )
+    }
+}
 ```
 
-**Key patterns:**
+`launchUiStateUpdate` automatically:
 
-| Pattern | What it solves |
-|---|---|
-| `UIState<T>` as single source of truth | No scattered boolean flags for loading/error |
-| `handleEvent(event)` as the only public ViewModel entry | Unidirectional data flow |
-| `Resource<T>` (Success / Error) from domain | Explicit error propagation without exceptions |
-| `RouteDefinition` + `RouteArgument<T>` | Compile-time-safe navigation arguments |
-| `NavigationManager` interface | ViewModel navigates without touching `NavController` |
-
----
+1. Moves the state to `LOADING`.
+2. Executes the suspend repository call.
+3. Publishes the mapped UI model and `SUCCESS` when it receives `Resource.Success`.
+4. Maps `Resource.Error` to a `UIError`, attaches retry behavior, and publishes `ERROR`.
 
 ## Installation
 
-The library is published to **GitHub Packages**.
+CoreUI is published through GitHub Packages.
 
 ### 1. Authenticate with GitHub Packages
 
-Add your credentials to `~/.gradle/gradle.properties`:
+Add credentials to `~/.gradle/gradle.properties`:
 
 ```properties
 gpr.user=YOUR_GITHUB_USERNAME
 gpr.key=YOUR_GITHUB_TOKEN
 ```
 
-> Generate a personal access token with the `read:packages` scope at **Settings → Developer settings → Personal access tokens**.
+Create a GitHub personal access token with the `read:packages` scope. Do not commit it to the
+repository.
 
 ### 2. Add the Maven repository
 
-In your root `settings.gradle.kts`:
+In the root `settings.gradle.kts`:
 
 ```kotlin
 dependencyResolutionManagement {
@@ -117,17 +195,15 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.tony.coreui:coreui:1.0.0")
+    implementation("com.tony.coreui:coreui:1.0.5")
 }
 ```
 
----
+## Quick start
 
-## Getting Started
+### Initialize localized strings
 
-### Initializing the Library
-
-CoreUI's string resolver requires an `Application` context. Call `init` once in your `Application.onCreate()`:
+When you use the default string resolver, initialize it once in your `Application`:
 
 ```kotlin
 class MyApp : Application() {
@@ -138,395 +214,256 @@ class MyApp : Application() {
 }
 ```
 
----
+If you prefer avoiding global initialization, inject a `StringResolver` and `UiErrorMapper`
+directly into your ViewModels.
 
-### State Management
-
-`UIState<T>` is the single data model passed to every screen:
+### Model repository results explicitly
 
 ```kotlin
-data class UIState<T>(
-    val status: UIStatus = UIStatus.IDLE,
-    val data: T? = null,
-    val error: UIError? = null,
-    val showErrorDialog: Boolean = false
-)
-
-enum class UIStatus { IDLE, LOADING, SUCCESS, ERROR }
+suspend fun getAlbums(): Resource<List<Album>> = try {
+    Resource.Success(api.loadAlbums())
+} catch (error: IOException) {
+    Resource.Error(
+        ResourceError.NetworkError(
+            message = error.message.orEmpty()
+        )
+    )
+}
 ```
 
-Define your screen's data model and plug it in:
+This keeps infrastructure failures out of composables and gives the UI a single error path.
+
+### Collect one-shot effects separately
+
+State is for rendering; effects are for transient actions such as snackbars:
 
 ```kotlin
-data class AlbumListUiData(
-    val albums: List<Album> = emptyList(),
-    val selectedFilter: Filter = Filter.ALL
-)
-
-// In your ViewModel:
-val uiState: StateFlow<UIState<AlbumListUiData>>
-```
-
----
-
-### Building a ViewModel
-
-Extend `BaseViewModel` with three type parameters — the UI data model, a sealed class for events, and a sealed class for one-shot effects:
-
-```kotlin
-sealed class AlbumEvent {
-    data object LoadAlbums : AlbumEvent()
-    data class FilterChanged(val filter: Filter) : AlbumEvent()
-}
-
-sealed class AlbumEffect {
-    data class ShowToast(val message: String) : AlbumEffect()
-}
-
-class AlbumViewModel(
-    private val repository: AlbumRepository,
-    navigationManager: NavigationManager
-) : BaseViewModel<AlbumListUiData, AlbumEvent, AlbumEffect>(navigationManager) {
-
-    override fun handleEvent(event: AlbumEvent) {
-        when (event) {
-            is AlbumEvent.LoadAlbums -> loadAlbums()
-            is AlbumEvent.FilterChanged -> applyFilter(event.filter)
+LaunchedEffect(viewModel) {
+    viewModel.uiEffect.collectLatest { effect ->
+        when (effect) {
+            is AlbumsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
         }
     }
-
-    private fun loadAlbums() {
-        launchUiStateUpdate(
-            action = { repository.getAlbums() },
-            onSuccess = { albums ->
-                AlbumListUiData(albums = albums)
-            }
-        )
-    }
-
-    private fun applyFilter(filter: Filter) {
-        updateUiData { copy(selectedFilter = filter) }
-        emitEffect(AlbumEffect.ShowToast("Filter: $filter"))
-    }
 }
 ```
 
-`launchUiStateUpdate` automatically handles the full loading lifecycle:
+## Typed navigation
 
-1. Sets state to `LOADING`
-2. Calls the suspend `action` lambda (returns `Resource<T>`)
-3. On `Success` → calls `onSuccess`, transitions to `SUCCESS`
-4. On `Error` → maps the error through `UiErrorMapper`, transitions to `ERROR`
+CoreUI can keep route construction, argument parsing, and `NavController` out of your ViewModels.
+The navigation layer is optional: skip it if your app already owns navigation.
 
-**Navigation from a ViewModel:**
-
-```kotlin
-// Navigate to a typed route
-navigateToRoute(AppRoutes.detail.createRoute(AppRoutes.albumId to 42L))
-
-// Navigate up
-navigateUp()
-
-// Navigate and clear back stack
-navigateAndClearBackstackTo(AppRoutes.home.routePattern)
-```
-
----
-
-### Typed Navigation
-
-#### Define routes
+### Define typed routes
 
 ```kotlin
 object AppRoutes {
-    // Simple route: /home
-    val home = RouteDefinition("home")
-
-    // Route with a path argument: /album/{albumId}
     val albumId = longPathArgument("albumId")
-    val albumDetail = RouteDefinition("album", albumId)
+    val section = enumQueryArgument(
+        name = "section",
+        enumClass = DetailSection::class.java,
+        defaultValue = DetailSection.OVERVIEW
+    )
 
-    // Route with a query argument: /search?filter={filter}
-    val filterArg = enumQueryArgument("filter", Filter::class.java, Filter.ALL)
-    val search = RouteDefinition("search", filterArg)
+    val home = route("home")
+    val album = route("album", albumId, section)
 }
 ```
 
-#### Build the nav graph
+### Build graph nodes
+
+```kotlin
+val homeDestination = destinationNode(AppRoutes.home)
+val albumDestination = destinationNode(AppRoutes.album)
+val mainFlow = flowNode(route = "main", startDestination = homeDestination)
+val root = rootNode(startDestination = mainFlow)
+```
+
+### Host the graph
 
 ```kotlin
 @Composable
-fun AppNavHost(navigationManager: NavigationManager) {
+fun AppNavigator(navigationManager: NavigationManager) {
     CoreUiNavigator(
-        startDestination = AppRoutes.home.routePattern,
-        navigationManager = navigationManager
+        navigationManager = navigationManager,
+        root = root
     ) {
-        destination(AppRoutes.home) { HomeScreen() }
+        flow(mainFlow) {
+            destination(homeDestination) {
+                HomeScreen()
+            }
 
-        destination(AppRoutes.albumDetail) { backStackEntry ->
-            val id = AppRoutes.albumDetail.requireArgument(backStackEntry, AppRoutes.albumId)
-            AlbumDetailScreen(albumId = id)
+            destination(albumDestination) { entry ->
+                AlbumScreen(
+                    albumId = AppRoutes.album.requireArgument(entry, AppRoutes.albumId)
+                )
+            }
         }
     }
 }
 ```
 
-#### Create type-safe route strings
+### Navigate without string assembly
 
 ```kotlin
-// Produces "album/42"
-val route = AppRoutes.albumDetail.createRoute(AppRoutes.albumId to 42L)
-
-// Produces "search?filter=RECENT"
-val searchRoute = AppRoutes.search.createRoute(AppRoutes.filterArg to Filter.RECENT)
-```
-
----
-
-### Screen Scaffold
-
-`AppBaseScreen` is the primary composable that wires up content, loading, and error layers automatically:
-
-```kotlin
-@Composable
-fun AlbumListScreen(viewModel: AlbumViewModel) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    AppBaseScreen(
-        uiState = uiState,
-        loadingType = BaseLoadingType.DEFAULT,       // replaces content during load
-        renderPolicy = BaseScreenRenderPolicy(),
-        errorDialogConfig = ErrorDialogConfig(
-            onRetry = { viewModel.handleEvent(AlbumEvent.LoadAlbums) },
-            onDismiss = { viewModel.dismissErrorPopup() }
-        )
-    ) { state ->
-        AlbumListContent(data = state.data)
-    }
-}
-```
-
-**Loading types:**
-
-| `BaseLoadingType` | Behavior |
-|---|---|
-| `DEFAULT` | Replaces content with `LoadingScreen` |
-| `OVERLAY` | Shows spinner over content |
-| `NONE` | Caller manages loading display |
-
-**`BaseScreenRenderPolicy` controls:**
-- System bar appearance (status bar / navigation bar colors and icon tint)
-- Whether content is hidden while loading
-- Whether error state persists after dismissal
-
----
-
-### Error Handling
-
-#### Domain errors
-
-Return `Resource.Error(ResourceError)` from your repository layer:
-
-```kotlin
-sealed interface ResourceError {
-    data class NetworkError(val message: String, val httpCode: Int? = null) : ResourceError
-    data class ServiceError(val message: String, val errorCode: String? = null) : ResourceError
-    data class LogicError(val errorMessage: String, val errorCode: String? = null) : ResourceError
-    data class ValidationError(val message: String, val field: String? = null) : ResourceError
-    data class DatabaseError(val message: String) : ResourceError
-    data class StorageError(val message: String) : ResourceError
-    data object UnknownError : ResourceError
-}
-```
-
-#### Custom error mapping
-
-Implement `UiErrorMapper` to override how domain errors become UI messages:
-
-```kotlin
-class MyUiErrorMapper : UiErrorMapper {
-    override fun mapResourceError(error: ResourceError?): UIError {
-        return when (error) {
-            is ResourceError.NetworkError -> UIError(
-                title = "No connection",
-                message = "Check your internet and try again.",
-                displayMode = UIErrorDisplayMode.FULL_SCREEN
-            )
-            else -> DefaultUiErrorMapper().mapResourceError(error)
-        }
-    }
-}
-```
-
-Pass your mapper to the ViewModel:
-
-```kotlin
-class MyViewModel(
-    repo: MyRepository,
-    nav: NavigationManager
-) : BaseViewModel<MyUiData, MyEvent, MyEffect>(
-    navigationManager = nav,
-    errorMapper = MyUiErrorMapper()
+navigationManager.navigate(
+    AppRoutes.album,
+    AppRoutes.albumId with 42L,
+    AppRoutes.section with DetailSection.CUSTOMIZATION
 )
 ```
 
----
+## Customization
 
-## Module Structure
+CoreUI provides useful defaults but keeps its main decisions replaceable.
 
+### Loading and screen rendering
+
+| Option | Behavior |
+|---|---|
+| `BaseLoadingType.DEFAULT` | Replaces content with the loading surface |
+| `BaseLoadingType.OVERLAY` | Keeps content visible and displays loading above it |
+| `BaseLoadingType.NONE` | Lets the host render its own loading experience |
+
+`AppBaseScreen` also accepts custom `loadingScreen`, `emptyContent`, `errorDialog`, `errorScreen`,
+and `contentWithState` composables. `BaseScreenRenderPolicy` controls system appearance, content
+visibility while loading, and whether existing content remains visible on error.
+
+### Error mapping
+
+Use the default mapping for common failures or inject your own strategy:
+
+```kotlin
+class AppErrorMapper : UiErrorMapper {
+    private val fallback = DefaultUiErrorMapper()
+
+    override fun map(errorObject: Any, retryAction: (() -> Unit)?): UIError =
+        fallback.map(errorObject, retryAction)
+
+    override fun mapResourceError(
+        resource: ResourceError?,
+        retryAction: (() -> Unit)?
+    ): UIError = when (resource) {
+        is ResourceError.NetworkError -> UIError(
+            title = "You're offline",
+            message = "Check your connection and try again.",
+            retryAction = retryAction,
+            displayMode = UIErrorDisplayMode.FULL_SCREEN
+        )
+        else -> fallback.mapResourceError(resource, retryAction)
+    }
+}
 ```
-CoreUI/
-├── coreui/                          # Library module (AAR)
-│   └── src/main/java/com/tony/coreui/
-│       ├── domain/
-│       │   └── resource/            # Resource<T>, ResourceError
-│       ├── data/
-│       │   ├── navigation/          # NavigationManagerImpl
-│       │   └── strings/             # CoreUiStringProvider, AndroidStringResolver
-│       └── presentation/
-│           ├── state/               # UIState, UIStatus, UIError, UIErrorDisplayMode
-│           ├── viewmodel/           # BaseViewModel
-│           ├── navigation/          # NavigationManager, commands, routes, graph DSL
-│           ├── components/
-│           │   └── basescreen/      # AppBaseScreen, LoadingScreen, ErrorScreen, BaseDialog
-│           └── error/               # UiErrorMapper, DefaultUiErrorMapper
-│
-├── sample/                          # Demo application
-│   └── src/main/java/com/tony/coreui/sample/
-│       ├── app/                     # Application, MainActivity, DI container
-│       ├── domain/                  # Demo models (DemoAlbum, filters, sections)
-│       ├── data/                    # FakeShowcaseRepository
-│       └── presentation/
-│           ├── feature/             # Library screen, Detail screen + ViewModels
-│           ├── navigation/          # SampleRoutes (typed route definitions)
-│           └── theme/               # CoreUiSampleTheme
-│
-├── gradle/
-│   └── libs.versions.toml           # Version catalog
-└── doc/
-    └── AGENTS.md                    # Detailed architecture reference
+
+You can also implement app-specific `ResourceError` types; the interface is intentionally open.
+
+### Dependency injection
+
+There is no mandatory DI dependency. Create `NavigationManagerImpl`, resolvers, and ViewModels with
+plain constructor injection, or provide them through Hilt, Koin, or your existing container.
+
+## Architecture
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ presentation                                           │
+│ state · ViewModel · navigation · Compose components    │
+├────────────────────────────────────────────────────────┤
+│ data                                                   │
+│ NavigationManagerImpl · string resolution              │
+├────────────────────────────────────────────────────────┤
+│ domain                                                 │
+│ Resource<T> · ResourceError                            │
+└────────────────────────────────────────────────────────┘
 ```
 
----
+The layers are deliberately small. Apps may use the complete stack or depend only on the contracts
+they need.
+
+### Design principles
+
+| Principle | Practical effect |
+|---|---|
+| One immutable state per screen | No scattered loading/error booleans |
+| Events enter through `onEvent` | A visible, unidirectional UI contract |
+| Effects use a separate `SharedFlow` | Transient actions are not replayed as screen state |
+| Repositories return `Resource<T>` | Failure propagation is explicit |
+| Navigation is command-based | ViewModels do not depend on `NavController` |
+| Defaults are injectable or replaceable | Shared behavior does not block feature-specific UX |
 
 ## Public API
 
-### State
+### State and ViewModel
 
-| Type | Description |
+| API | Purpose |
 |---|---|
-| `UIState<T>` | Screen state container: status, data, error |
-| `UIStatus` | `IDLE` · `LOADING` · `SUCCESS` · `ERROR` |
-| `UIError` | User-facing error with title, message, display mode, and optional retry action |
-| `UIErrorDisplayMode` | `DIALOG` · `FULL_SCREEN` · `NONE` |
+| `UIState<T>` | Screen data, status, error, and error-dialog visibility |
+| `UIStatus` | `IDLE`, `LOADING`, `SUCCESS`, or `ERROR` |
+| `UIError` | User-facing title, message, retry action, display mode, and metadata |
+| `BaseViewModel<UI, EVENT, EFFECT>` | State, effects, async lifecycle, errors, and navigation helpers |
+| `launchUiStateUpdate()` | Runs a `Resource`-producing operation and updates state consistently |
 
-### ViewModel
+### Compose components
 
-| Type / Method | Description |
+| API | Purpose |
 |---|---|
-| `BaseViewModel<UI, EVENT, EFFECT>` | Abstract base; implement `handleEvent()` |
-| `launchUiStateUpdate()` | Fetch data with automatic loading/error lifecycle |
-| `updateUiData()` | Partial state update without changing status |
-| `emitEffect()` | Fire a one-shot side effect |
-| `navigateToRoute()` · `navigateUp()` · `navigateAndClearBackstackTo()` | Navigation helpers |
+| `AppBaseScreen` | Coordinates content, loading, empty, and error layers |
+| `LoadingScreen` | Default full-screen or overlay loading feedback |
+| `ErrorScreen` | Full-screen error surface with actions |
+| `BaseDialog` | Default dialog error surface |
+| `BaseScreenRenderPolicy` | Controls system appearance and layer visibility |
 
 ### Navigation
 
-| Type | Description |
+| API | Purpose |
 |---|---|
-| `NavigationManager` | Interface for issuing navigation commands |
+| `NavigationManager` | Framework-facing navigation contract |
 | `NavigationManagerImpl` | Default `SharedFlow`-based implementation |
-| `NavigationCommand` | `Navigate` · `NavigateUp` · `PopBackStack` · `NavigateAndClearBackStack` |
-| `RouteDefinition` | Typed route with pattern generation and argument extraction |
-| `RouteArgument<T>` | Factory functions: `stringPathArgument()`, `longPathArgument()`, `intPathArgument()`, `booleanPathArgument()`, `floatPathArgument()`, `enumPathArgument()` — plus query variants |
-| `CoreUiNavigator` | Composable `NavHost` wrapper that consumes `NavigationManager` commands |
+| `RouteDefinition` / `RouteArgument<T>` | Typed route generation and argument extraction |
+| `NavigationDestination` / `NavigationFlowNode` | Destination and nested-flow graph models |
+| `CoreUiNavigator` | Optional Compose `NavHost` bridge |
 
-### Components
+### Results and errors
 
-| Composable | Description |
+| API | Purpose |
 |---|---|
-| `AppBaseScreen` | Primary screen scaffold; coordinates content / loading / error layers |
-| `LoadingScreen` | Full-screen or overlay loading indicator with optional label |
-| `ErrorScreen` | Full-screen error with up to three action buttons |
-| `BaseDialog` | Alert dialog with title, message, confirm, retry, and cancel buttons |
+| `Resource<T>` | Explicit `Success(data)` or `Error(ResourceError?)` result |
+| `ResourceError` | Common network, service, validation, database, storage, and logic failures |
+| `UiErrorMapper` | Strategy for converting failures into UI-ready messages |
+| `DefaultUiErrorMapper` | Localized built-in mapping |
 
-### Domain
+## Sample app
 
-| Type | Description |
-|---|---|
-| `Resource<T>` | `Success(data)` or `Error(ResourceError?)` |
-| `ResourceError` | Sealed interface: `NetworkError`, `ServiceError`, `LogicError`, `ValidationError`, `DatabaseError`, `StorageError`, `UnknownError` |
+The [`sample`](sample) module is a runnable showcase rather than a collection of isolated snippets.
+It demonstrates:
 
-### Error Mapping
+- default loading, empty, success, and dialog-error behavior
+- a customized screen with overlay loading and full-screen errors
+- state-driven filtering and one-shot snackbar effects
+- typed path and enum query arguments
+- nested graph nodes hosted by `CoreUiNavigator`
+- constructor injection through a lightweight app container
 
-| Type | Description |
-|---|---|
-| `UiErrorMapper` | Interface — implement to customize domain → UI error translation |
-| `DefaultUiErrorMapper` | Built-in mapper using library string resources |
-
----
-
-## Sample App
-
-The `:sample` module demonstrates the library end-to-end with two screens:
-
-**Library Screen** (`/library?filter={filter}`)
-- Loads a list of demo albums from an in-memory fake repository
-- Demonstrates `launchUiStateUpdate`, filter events via `handleEvent`, and enum query arguments
-
-**Detail Screen** (`/album/{albumId}?section={section}`)
-- Receives a Long path argument and an enum query argument
-- Shows a custom `UiErrorMapper` for screen-specific error messages
-- Demonstrates `OVERLAY` loading and `FULL_SCREEN` error mode
-
-Clone the repository and run the `sample` configuration in Android Studio to explore the patterns interactively. Start with these files for the quickest walkthrough:
+Start with:
 
 - [`LibraryViewModel.kt`](sample/src/main/java/com/tony/coreui/sample/presentation/feature/library/LibraryViewModel.kt)
 - [`LibraryScreen.kt`](sample/src/main/java/com/tony/coreui/sample/presentation/feature/library/LibraryScreen.kt)
 - [`DetailViewModel.kt`](sample/src/main/java/com/tony/coreui/sample/presentation/feature/detail/DetailViewModel.kt)
-- [`SampleRoutes.kt`](sample/src/main/java/com/tony/coreui/sample/presentation/navigation/SampleRoutes.kt)
+- [`SampleNavigator.kt`](sample/src/main/java/com/tony/coreui/sample/presentation/navigation/SampleNavigator.kt)
 
-For a deep dive into every type and pattern, see [AGENTS.md](doc/AGENTS.md).
-
----
+For a deeper architecture reference, see [`doc/AGENTS.md`](doc/AGENTS.md).
 
 ## Requirements
 
-| | |
+| Requirement | Version |
 |---|---|
 | Min SDK | API 29 (Android 10) |
 | Compile SDK | API 36 |
+| Java compatibility | 11 |
 | Kotlin | 2.3.20 |
 | Jetpack Compose BOM | 2026.03.01 |
 | Navigation Compose | 2.9.7 |
 | Lifecycle | 2.10.0 |
 | Coroutines | 1.10.2 |
-| Java compatibility | 11 |
-
----
 
 ## License
 
-```
-MIT License
-
-Copyright (c) 2026 Tony
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+CoreUI is available under the [MIT License](LICENSE).
